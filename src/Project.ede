@@ -1,0 +1,16 @@
+;; Object player
+;; EDE Project Files are auto generated: Do Not Edit
+(ede-proj-project "player"
+  :file "Project.ede"
+  :name "player"
+  :targets
+  (list
+    (ede-proj-target-makefile-program "player"
+      :name "player"
+      :path ""
+      :source '("data.cpp" "main.cpp" "play.cpp" "decode.cpp")
+      :configuration-variables nil
+      :ldlibs '("avcodec" "avformat" "avutil" "ao")))
+  :makefile-type 'Makefile.am
+  :variables '(("AM_CXXFLAGS" . "-std=c++11") ("AM_CPPFLAGS" . "-I../include"))
+  :configuration-variables nil)

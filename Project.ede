@@ -1,0 +1,7 @@
+;; Object player
+;; EDE Project Files are auto generated: Do Not Edit
+(ede-proj-project "player"
+  :file "Project.ede"
+  :name "player"
+  :targets nil
+  :makefile-type 'Makefile.am)
