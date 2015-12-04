@@ -2,13 +2,9 @@
 
 void play(Track* track)
 {
-   av_dump_format(track->container, 1, track->filePath.c_str(), 0);
+   //av_dump_format(track->container, 1, track->filePath.c_str(), 0);
    
    //ao_sample_format* sampleFormat = getSampleFormat(track);
-   AVPacket* packet;
-   AVPacket test;
-   
-   AVFrame* frame;
    ao_device* device = ao_open_live(ao_default_driver_id(), track->sampleFormat, NULL);
    if (device == NULL)
    {
@@ -19,14 +15,20 @@ void play(Track* track)
    bool endOfStream = false;
    while (!endOfStream)
    {
-      packet = new AVPacket;
-      av_read_frame(track->container, packet);
+      AVPacket* packet = new AVPacket;
+      if (av_read_frame(track->container, packet) < 0)
+      {
+	 delete packet;
+	 endOfStream = true;
+	 continue;
+      }
       if (packet->stream_index != track->streamID)
       {
+	 delete packet;
 	 printf("Packet from invalid stream\n");
 	 continue;
       }
-
+      AVFrame* frame;
       frame = decodeFrame(track, track->sampleFormat, packet);
       if (frame == NULL)
       {

@@ -1,59 +1,48 @@
 #include "data.h"
 #include "play.h"
+#include "interface.h"
 
 #include <stdio.h>
 #include <ao/ao.h>
-
-void initLibs()
-{
-   av_register_all();
-   ao_initialize();
-}
-
-void stop()
-{
-   ao_shutdown();
-}
+#include <unistd.h>
 
 int main(int argc, char* argv[])
 {
-   initLibs();
+   av_register_all();
+   ao_initialize();
    initData();
 
-   // for (int i = 1; i < argc; i++)
-   // {
-   //    addTrack(new Track(argv[i]));
-   // }
-   // for (auto artistPair : artists)
-   // {
-   //    Artist* artist = pair.second;
-   //    if (artist != NULL)
-   //    {
-   // 	 artist->testPrint();
-   //    }
-   // }
-   // printf("\n\n\n");
-   // for (auto artistPair : artists)
-   // {
-   //    for (auto album : *pair.second->getAlbums(false))
-   //    {
-   // 	 album->testPrint();
-   //    }
-   // }
-   // printf("\n\n\n");
-   
-   // for (auto album : *getUnknownAlbums())
-   // {
-   //    for (auto trackPair : album->tracks)
-   //    {
-   // 	 trackPair.second->testPrint();
-   //    }
-   // }
+   Track* fstTrack = new Track(argv[1]);
+   addTrack(fstTrack);
+   for (int i = 2; i < argc; i++)
+   {
+      addTrack(new Track(argv[i]));
+   }
 
-
-   std::string fileName = argv[1];
-   Track* track = new Track(fileName);
-   play(track);
+   // TEST PRINT ARTISTS
+   for (auto artist : artists)
+   {
+      if (artist != NULL)
+      {
+	 artist->testPrint();
+      }
+   }
    
-   stop();
+   // play(fstTrack);
+   initInterface();
+   while (true)
+   {
+      updateWindows();
+   }
+   // auto tracks = getTracks();
+   // for (auto p = tracks->begin(); p != tracks->end(); p++)
+   // {
+   //    printf("%p\n", (*p));
+   //    if ((*p) != NULL)
+   //    {
+   // 	 (*p)->testPrint();
+   //    }
+   // }
+   
+   ao_shutdown();
 }

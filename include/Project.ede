@@ -8,5 +8,5 @@
     (ede-proj-target-makefile-miscelaneous "include"
       :name "include"
       :path ""
-      :source '("data.h" "play.h" "decode.h")))
+      :source '("data.h" "play.h" "decode.h" "interface.h")))
   :makefile-type 'Makefile.am)

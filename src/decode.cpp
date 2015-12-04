@@ -26,13 +26,14 @@ ao_sample_format* getSampleFormat(Track* track)
    sampleFormat->channels = track->codecContext->channels;
    sampleFormat->rate = track->codecContext->sample_rate/sampleFormat->channels;
    sampleFormat->byte_format = AO_FMT_NATIVE;
-   sampleFormat->matrix = "L,R";
+   sampleFormat->matrix = 0;
    av_seek_frame(track->container, track->streamID, 0, AVSEEK_FLAG_ANY);
 
    return sampleFormat;
 }
 
-// decodedFrame must be initialized
+// In case of successful decode frame must be unreferenced and deleted
+// manually after use
 AVFrame* decodeFrame(Track* track, ao_sample_format* sampleFormat, AVPacket* packet)
 {
    AVFrame* decodedFrame = av_frame_alloc();

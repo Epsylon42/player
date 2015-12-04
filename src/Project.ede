@@ -8,9 +8,9 @@
     (ede-proj-target-makefile-program "player"
       :name "player"
       :path ""
-      :source '("data.cpp" "main.cpp" "play.cpp" "decode.cpp")
+      :source '("data.cpp" "main.cpp" "play.cpp" "decode.cpp" "interface.cpp")
       :configuration-variables nil
-      :ldlibs '("avcodec" "avformat" "avutil" "ao")))
+      :ldlibs '("ncurses" "avcodec" "avformat" "avutil" "ao")))
   :makefile-type 'Makefile.am
   :variables '(("AM_CXXFLAGS" . "-std=c++11") ("AM_CPPFLAGS" . "-I../include"))
   :configuration-variables nil)

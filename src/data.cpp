@@ -1,40 +1,51 @@
 #include "data.h"
 #include "decode.h"
 
-#include <exception>
 #include <string>
 #include <stdio.h>
 
-std::map<std::string, Artist*> artists;
+std::map<std::string, int> artistIndexes;
+std::vector<Artist*> artists;
+std::vector<Track*> testTracks;
 
 void initData()
 {
-
+   artists.push_back(new Artist("unknown"));
+   artistIndexes["unknown"] = 0;
 }
 
 void addTrack(Track* track)
 {
-   if (artists[track->artistName] == NULL)
+   if (artistIndexes.find(track->artistName) == artistIndexes.end())
    {
-      artists[track->artistName] = new Artist(track->artistName);
-   }
-   artists[track->artistName]->addTrack(track);
-}
-
-std::list<Album*>* getUnknownAlbums()
-{
-   std::list<Album*>* ret = new std::list<Album*>();
-
-   for (auto artistPair : artists)
-   {
-      Album* album = artistPair.second->albums["unknown"];
-      if (album != NULL)
-      {
-	 ret->push_back(album);
-      }
+      artists.push_back(new Artist(track->artistName));
+      artistIndexes[track->artistName] = artists.size()-1;
    }
    
-   return ret;
+   artists[artistIndexes[track->artistName]]->addTrack(track);
+}
+
+std::vector<Track*>* getTracks()
+{
+   std::vector<Track*>* tracks = new std::vector<Track*>;
+   for (auto artist : artists)
+   {
+      for (auto album : artist->albums)
+      {
+	 tracks->insert(tracks->end(), album->tracks.begin(), album->tracks.end());
+      }
+   }
+   return tracks;
+}
+
+std::vector<Album*>* getAlbums(bool includeUnknown)
+{
+   std::vector<Album*>* albums = new std::vector<Album*>;
+   for (auto artist : artists)
+   {
+      albums->insert(albums->end(), artist->albums.begin(), artist->albums.end());
+   }
+   return albums;
 }
 
 Track::Track(const std::string& file)
@@ -130,120 +141,78 @@ void Track::testPrint()
    printf("\t\t%s: %s (%s)\n", artistName.c_str(), name.c_str(), albumName.c_str());
 }
 
+Album::Album(const std::string& name, int artistIndex) :
+   name(name), artistIndex(artistIndex) {};
 
-Album::Album(const std::string& _name, const std::string& _artistName)
-{
-   name = _name;
-   artistName = _artistName;
-}
+Album::Album(const std::string& name, const std::string& artistName) :
+   Album(name, artistIndexes[artistName]) {};
 
-Album::Album(const std::string& _name, Artist* artist)
-{
-   name = _name;
-   artistName = artist->name;
-}
+Album::Album(const std::string& name, Artist* artist) :
+   Album(name, artist->name) {};
 
 Album::~Album()
 {
-   for (auto trackPair : tracks)
+   for (auto track : tracks)
    {
-      delete trackPair.second;
+      delete track;
    }
    tracks.clear();
 }
 
-int Album::addTrack(Track* track)
+void Album::addTrack(Track* track)
 {
-   if (track->artistName != artistName)
-   {
-      printf("Artist name of track and album do not match: '%s' and '%s'\n",
-	     track->artistName.c_str(),
-	     artistName.c_str());
-      return -1;
-   }
-   
-   tracks[track->name] = track;
-
-   return 0;
+   tracks.push_back(track);
+   trackIndexes[track->name] = tracks.size()-1;
 }
 
 void Album::testPrint()
 {
    printf("\tStarting to print album %s\n", name.c_str());
-   for (auto trackPair : tracks)
+   for (auto track : tracks)
    {
-      trackPair.second->testPrint();
+	 track->testPrint();
    }
    printf("\tDone printing album %s\n", name.c_str());
 }
 
-
-Artist::Artist(const std::string& _name)
+Artist::Artist(const std::string& name) :
+   name(name)
 {
-   name = _name;
+   albums.push_back(new Album(this->name + ": unknown", this));
+   albumIndexes["unknown"] = 0;
 }
 
 Artist::~Artist()
 {
-   for (auto albumPair : albums)
+   for (auto album : albums)
    {
-      delete albumPair.second;
+      delete album;
    }
    albums.clear();
 }
 
-int Artist::addAlbum(Album* album)
+void Artist::addAlbum(Album* album)
 {
-   if (album->artistName != name)
-   {
-      printf("Artist name do not match with album: '%s' and '%s'\n",
-	     album->artistName.c_str(),
-	     name.c_str());
-      return -1;
-   }
-
-   albums[album->name] = album;
+   albums.push_back(album);
+   albumIndexes[album->name] = albums.size()-1;
 }
 
-int Artist::addTrack(Track* track)
+void Artist::addTrack(Track* track)
 {
-   if (track->artistName != name)
+   if (albumIndexes.find(track->albumName) == albumIndexes.end())
    {
-      printf("Artist name do not match with track: '%s' and '%s'\n",
-	     track->artistName.c_str(),
-	     name.c_str());
-      return -1;
+      albums.push_back(new Album(track->albumName, this));
+      albumIndexes[track->albumName] = albums.size()-1;
    }
-   
-   if (albums[track->albumName] == NULL)
-   {
-      albums[track->albumName] = new Album(track->albumName, this);
-   }
-   return albums[track->albumName]->addTrack(track);
+   albums[albumIndexes[track->albumName]]->addTrack(track);
 }
 
 void Artist::testPrint()
 {
    printf("Starting to print artist %s\n", name.c_str());
-   for (auto albumPair : albums)
+   for (auto album : albums)
    {
-      albumPair.second->testPrint();
+	 album->testPrint();
    }
    printf("Done printing artist %s\n\n", name.c_str());
-}
-
-std::list<Album*>* Artist::getAlbums(bool includeUnknown)
-{
-   std::list<Album*>* ret = new std::list<Album*>();
-
-   for (auto albumPair : albums)
-   {
-      Album* album = albumPair.second;
-      if (album->name != "unknown" || includeUnknown)
-      {
-	 ret->push_back(album);
-      }
-   }
-   
-   return ret;
 }
