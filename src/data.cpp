@@ -10,8 +10,10 @@ std::vector<Track*> testTracks;
 
 void initData()
 {
+   artists.push_back(new Artist("all"));
+   artistIndexes["all"] = 0;
    artists.push_back(new Artist("unknown"));
-   artistIndexes["unknown"] = 0;
+   artistIndexes["unknown"] = 1;
 }
 
 void addTrack(Track* track)
@@ -23,6 +25,7 @@ void addTrack(Track* track)
    }
    
    artists[artistIndexes[track->artistName]]->addTrack(track);
+   artists[artistIndexes["all"]]->addTrack(track);
 }
 
 std::vector<Track*>* getTracks()
@@ -45,6 +48,7 @@ std::vector<Album*>* getAlbums(bool includeUnknown)
    {
       albums->insert(albums->end(), artist->albums.begin(), artist->albums.end());
    }
+
    return albums;
 }
 
@@ -73,7 +77,7 @@ Track::Track(const std::string& file)
    AVDictionaryEntry* title = av_dict_get(container->metadata, "title", NULL, 0);
    if (title == NULL)
    {
-      name = "untitled";
+      name = file;
    }
    else
    {
@@ -159,6 +163,14 @@ Album::~Album()
    tracks.clear();
 }
 
+std::vector<Track*>* Album::getTracks()
+{
+   std::vector<Track*>* ret = new std::vector<Track*>;
+   *ret = tracks;
+   // std::copy(tracks.begin(), tracks.end(), ret->end());
+   return ret;
+}
+
 void Album::addTrack(Track* track)
 {
    tracks.push_back(track);
@@ -178,8 +190,10 @@ void Album::testPrint()
 Artist::Artist(const std::string& name) :
    name(name)
 {
+   albums.push_back(new Album(this->name + ": all", this));
+   albumIndexes["all"] = 0;
    albums.push_back(new Album(this->name + ": unknown", this));
-   albumIndexes["unknown"] = 0;
+   albumIndexes["unknown"] = 1;
 }
 
 Artist::~Artist()
@@ -189,6 +203,13 @@ Artist::~Artist()
       delete album;
    }
    albums.clear();
+}
+
+std::vector<Album*>* Artist::getAlbums()
+{
+   std::vector<Album*>* ret = new std::vector<Album*>;
+   *ret = albums;
+   return ret;
 }
 
 void Artist::addAlbum(Album* album)
@@ -205,6 +226,7 @@ void Artist::addTrack(Track* track)
       albumIndexes[track->albumName] = albums.size()-1;
    }
    albums[albumIndexes[track->albumName]]->addTrack(track);
+   albums[albumIndexes["all"]]->addTrack(track);
 }
 
 void Artist::testPrint()

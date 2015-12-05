@@ -25,6 +25,7 @@ void initData();
 void addTrack(Track* track);
 std::vector<Track*>* getTracks();
 std::vector<Album*>* getAlbums(bool includeUnknown = true);
+Album* globalAlbum();
 
 struct Track
 {
@@ -56,6 +57,7 @@ struct Album
    Album(const std::string& name, const std::string& artistName);
    Album(const std::string& name, Artist* artist);
    ~Album();
+   std::vector<Track*>* getTracks();
    void addTrack(Track* track);
    void testPrint();
 };
@@ -69,6 +71,7 @@ struct Artist
 
    Artist(const std::string& name);
    ~Artist();
+   std::vector<Album*>* getAlbums();
    void addAlbum(Album* album);
    void addTrack(Track* track);
    void testPrint();
