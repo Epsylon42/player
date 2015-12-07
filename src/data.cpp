@@ -67,39 +67,13 @@ Track::Track(const std::string& file)
       printf("Could not open file: %s\n", file.c_str());
       exit(0);
    }
+
+   decodeMetadata();
    
    if (avformat_find_stream_info(container, NULL) < 0)
    {
       printf("Could not find stream data: %s\n", file.c_str());
       exit(0);
-   }
-   
-   AVDictionaryEntry* title = av_dict_get(container->metadata, "title", NULL, 0);
-   if (title == NULL)
-   {
-      name = file;
-   }
-   else
-   {
-      name = title->value;
-   }
-   AVDictionaryEntry* artist = av_dict_get(container->metadata, "artist", NULL, 0);
-   if (artist == NULL)
-   {
-      artistName = "unknown";
-   }
-   else
-   {
-      artistName = artist->value;
-   }
-   AVDictionaryEntry* album = av_dict_get(container->metadata, "album", NULL, 0);
-   if (album == NULL)
-   {
-      albumName = "unknown";
-   }
-   else
-   {
-      albumName = album->value;
    }
    
    streamID = -1;
@@ -138,6 +112,37 @@ Track::~Track()
    delete sampleFormat;
    delete codecContext;
    delete container;
+}
+
+void Track::decodeMetadata()
+{
+   AVDictionaryEntry* title = av_dict_get(container->metadata, "title", NULL, 0);
+   if (title == NULL)
+   {
+      name = filePath;
+   }
+   else
+   {
+      name = title->value;
+   }
+   AVDictionaryEntry* artist = av_dict_get(container->metadata, "artist", NULL, 0);
+   if (artist == NULL)
+   {
+      artistName = "unknown";
+   }
+   else
+   {
+      artistName = artist->value;
+   }
+   AVDictionaryEntry* album = av_dict_get(container->metadata, "album", NULL, 0);
+   if (album == NULL)
+   {
+      albumName = "unknown";
+   }
+   else
+   {
+      albumName = album->value;
+   }
 }
 
 void Track::testPrint()

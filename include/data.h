@@ -42,6 +42,7 @@ struct Track
 
    Track(const std::string& file);
    ~Track();
+   void decodeMetadata();
    void testPrint();
 };
 
