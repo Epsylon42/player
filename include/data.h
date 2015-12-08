@@ -16,9 +16,8 @@ struct Track;
 struct Album;
 struct Artist;
 
-extern std::map<std::string, int> artistIndexes;
-extern std::deque<Artist*> artists;
-extern std::deque<Track*> testTracks;
+extern std::map<std::string, Artist*> artistsMap;
+extern std::deque<Artist*> artistsDeque;
 
 void initData();
 
@@ -51,8 +50,8 @@ struct Album
    std::string name;
    int artistIndex;
 
-   std::map<std::string, int> trackIndexes;
-   std::deque<Track*> tracks;
+   std::map<std::string, Track*> tracksMap;
+   std::deque<Track*> tracksDeque;
 
    Album(const std::string& name, int artistIndex);
    Album(const std::string& name, const std::string& artistName);
@@ -67,8 +66,8 @@ struct Artist
 {
    std::string name;
 
-   std::map<std::string, int> albumIndexes;
-   std::deque<Album*> albums;
+   std::map<std::string, Album*> albumsMap;
+   std::deque<Album*> albumsDeque;
 
    Artist(const std::string& name);
    ~Artist();

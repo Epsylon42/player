@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
    }
 
    // TEST PRINT ARTISTS
-   for (auto artist : artists)
+   for (auto artist : artistsDeque)
    {
       if (artist != NULL)
       {

@@ -1,41 +1,46 @@
 #include "data.h"
 #include "decode.h"
 
+#include <algorithm>
 #include <string>
 #include <stdio.h>
 
-std::map<std::string, int> artistIndexes;
-std::deque<Artist*> artists;
+std::map<std::string, Artist*> artistsMap;
+std::deque<Artist*> artistsDeque;
 std::deque<Track*> testTracks;
 
 void initData()
 {
-   artists.push_back(new Artist("all"));
-   artistIndexes["all"] = 0;
-   artists.push_back(new Artist("unknown"));
-   artistIndexes["unknown"] = 1;
+   Artist* temp;
+   temp = new Artist("all");
+   artistsDeque.push_back(temp);
+   artistsMap["all"] = temp;
+
+   temp = new Artist("unknown");
+   artistsDeque.push_back(temp);
+   artistsMap["unknown"] = temp;
 }
 
 void addTrack(Track* track)
 {
-   if (artistIndexes.find(track->artistName) == artistIndexes.end())
+   if (artistsMap.find(track->artistName) == artistsMap.end())
    {
-      artists.push_back(new Artist(track->artistName));
-      artistIndexes[track->artistName] = artists.size()-1;
+      Artist* temp = new Artist(track->artistName);
+      artistsDeque.push_back(temp);
+      artistsMap[track->artistName] = temp;
    }
-   
-   artists[artistIndexes[track->artistName]]->addTrack(track);
-   artists[artistIndexes["all"]]->addTrack(track);
+
+   artistsMap[track->artistName]->addTrack(track);   
 }
 
 std::deque<Track*>* getTracks()
 {
    std::deque<Track*>* tracks = new std::deque<Track*>;
-   for (auto artist : artists)
+   for (auto artist : artistsDeque)
    {
-      for (auto album : artist->albums)
+      for (auto album : artist->albumsDeque)
       {
-	 tracks->insert(tracks->end(), album->tracks.begin(), album->tracks.end());
+	 tracks->insert(tracks->end(), album->tracksDeque.begin(), album->tracksDeque.end());
       }
    }
    return tracks;
@@ -44,9 +49,9 @@ std::deque<Track*>* getTracks()
 std::deque<Album*>* getAlbums(bool includeUnknown)
 {
    std::deque<Album*>* albums = new std::deque<Album*>;
-   for (auto artist : artists)
+   for (auto artist : artistsDeque)
    {
-      albums->insert(albums->end(), artist->albums.begin(), artist->albums.end());
+      albums->insert(albums->end(), artist->albumsDeque.begin(), artist->albumsDeque.end());
    }
 
    return albums;
@@ -151,41 +156,50 @@ void Track::testPrint()
 }
 
 Album::Album(const std::string& name, int artistIndex) :
-   name(name), artistIndex(artistIndex) {};
+   name(name), artistIndex(artistIndex) {}; //FIXRIGHTNOW
 
 Album::Album(const std::string& name, const std::string& artistName) :
-   Album(name, artistIndexes[artistName]) {};
+   Album(name, artistsMap[artistName]) {};
 
 Album::Album(const std::string& name, Artist* artist) :
    Album(name, artist->name) {};
 
 Album::~Album()
 {
-   for (auto track : tracks)
+   for (auto track : tracksDeque)
    {
       delete track;
    }
-   tracks.clear();
+   tracksDeque.clear();
+   tracksMap.clear();
 }
 
 std::deque<Track*>* Album::getTracks()
 {
    std::deque<Track*>* ret = new std::deque<Track*>;
-   *ret = tracks;
-   // std::copy(tracks.begin(), tracks.end(), ret->end());
+   *ret = tracksDeque;
    return ret;
 }
 
 void Album::addTrack(Track* track)
 {
-   tracks.push_back(track);
-   trackIndexes[track->name] = tracks.size()-1;
+   if (tracksMap.find(track->name) != tracksMap.end())
+   // if (std::find(tracksMap.begin(), tracksMap.end(), track->name) != tracksMap.end())
+   {
+      track->name = track->name + "_";
+      addTrack(track);
+   }
+   else
+   {
+      tracksMap[track->name] = track;
+      tracksDeque.push_back(track);
+   }
 }
 
 void Album::testPrint()
 {
    printf("\tStarting to print album %s\n", name.c_str());
-   for (auto track : tracks)
+   for (auto track : tracksDeque)
    {
 	 track->testPrint();
    }
@@ -195,49 +209,55 @@ void Album::testPrint()
 Artist::Artist(const std::string& name) :
    name(name)
 {
-   albums.push_back(new Album(this->name + ": all", this));
-   albumIndexes["all"] = 0;
-   albums.push_back(new Album(this->name + ": unknown", this));
-   albumIndexes["unknown"] = 1;
+   Album* temp;
+   temp = new Album(this->name + ": all", this);
+   albumsDeque.push_back(temp);
+   albumsMap["all"] = temp;
+
+   temp = new Album(this->name + ": unknown", this);
+   albumsDeque.push_back(temp);
+   albumsMap["unknown"] = temp;
 }
 
 Artist::~Artist()
 {
-   for (auto album : albums)
+   for (auto album : albumsDeque)
    {
       delete album;
    }
-   albums.clear();
+   albumsDeque.clear();
+   albumsMap.clear();
+   
 }
 
 std::deque<Album*>* Artist::getAlbums()
 {
    std::deque<Album*>* ret = new std::deque<Album*>;
-   *ret = albums;
+   *ret = albumsDeque;
    return ret;
 }
 
 void Artist::addAlbum(Album* album)
 {
-   albums.push_back(album);
-   albumIndexes[album->name] = albums.size()-1;
+   albumsDeque.push_back(album); //TODO: this needs to check if such album already exists
+   albumsMap[album->name] = album;
 }
 
 void Artist::addTrack(Track* track)
 {
-   if (albumIndexes.find(track->albumName) == albumIndexes.end())
+   if (albumsMap.find(track->albumName) == albumsMap.end())
    {
-      albums.push_back(new Album(track->albumName, this));
-      albumIndexes[track->albumName] = albums.size()-1;
+      Album* temp = new Album(track->albumName, this);
+      albumsDeque.push_back(temp);
+      albumsMap[track->albumName] = temp;
    }
-   albums[albumIndexes[track->albumName]]->addTrack(track);
-   albums[albumIndexes["all"]]->addTrack(track);
+   albumsMap[track->albumName]->addTrack(track);
 }
 
 void Artist::testPrint()
 {
    printf("Starting to print artist %s\n", name.c_str());
-   for (auto album : albums)
+   for (auto album : albumsDeque)
    {
 	 album->testPrint();
    }

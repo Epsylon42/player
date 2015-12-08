@@ -29,7 +29,7 @@ void initInterface()
 						  {
 						     tracksWindow->assignNewDeque(album->getTracks());
 						  });
-   artistsWindow = new DequeListingWindow<Artist*>(0, 0, sizeY/2+1, sizeX/2, BORDERS_ALL, &artists, [](Artist* artist)
+   artistsWindow = new DequeListingWindow<Artist*>(0, 0, sizeY/2+1, sizeX/2, BORDERS_ALL, &artistsDeque, [](Artist* artist)
 						    {
 						       albumsWindow->assignNewDeque(artist->getAlbums());
 						       albumsWindow->processKey('S'); //TODO: replace this with something more... good
