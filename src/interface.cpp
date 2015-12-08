@@ -5,10 +5,10 @@
 
 int sizeX;
 int sizeY;
-std::vector<Window*> windows;
-VectorListingWindow<Artist*>* artistsWindow;
-VectorListingWindow<Album*>* albumsWindow;
-VectorListingWindow<Track*>* tracksWindow;
+std::deque<Window*> windows;
+DequeListingWindow<Artist*>* artistsWindow;
+DequeListingWindow<Album*>* albumsWindow;
+DequeListingWindow<Track*>* tracksWindow;
 Window* selectedWindow;
 
 
@@ -21,17 +21,17 @@ void initInterface()
    sizeX = getmaxx(stdscr);
    sizeY = getmaxy(stdscr);
 
-   tracksWindow = new VectorListingWindow<Track*>(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks(), [](Track* track)
+   tracksWindow = new DequeListingWindow<Track*>(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks(), [](Track* track)
 						  {
 						     play(track);
 						  });
-   albumsWindow = new VectorListingWindow<Album*>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(), [](Album* album)
+   albumsWindow = new DequeListingWindow<Album*>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(), [](Album* album)
 						  {
-						     tracksWindow->assignNewVector(album->getTracks());
+						     tracksWindow->assignNewDeque(album->getTracks());
 						  });
-   artistsWindow = new VectorListingWindow<Artist*>(0, 0, sizeY/2+1, sizeX/2, BORDERS_ALL, &artists, [](Artist* artist)
+   artistsWindow = new DequeListingWindow<Artist*>(0, 0, sizeY/2+1, sizeX/2, BORDERS_ALL, &artists, [](Artist* artist)
 						    {
-						       albumsWindow->assignNewVector(artist->getAlbums());
+						       albumsWindow->assignNewDeque(artist->getAlbums());
 						       albumsWindow->processKey('S'); //TODO: replace this with something more... good
 						    });
 
@@ -168,27 +168,27 @@ void Window::update(bool isSelected)
    wrefresh(window);
 }
 
-template< typename VectorType >
-void VectorListingWindow<VectorType>::afterReshape()
+template< typename DequeType >
+void DequeListingWindow<DequeType>::afterReshape()
 {
    screenStart = cursorPos;
 }
 
-template< typename VectorType >
-VectorListingWindow<VectorType>::VectorListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::vector<VectorType>* vector, void (*select)(VectorType)) :
-   Window(startY, startX, nlines, ncols, borders), vector(vector), select(select)
+template< typename DequeType >
+DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* deque, void (*select)(DequeType)) :
+   Window(startY, startX, nlines, ncols, borders), deque(deque), select(select)
 {
-   cursorPos = vector->begin();
-   screenStart = vector->begin();
+   cursorPos = deque->begin();
+   screenStart = deque->begin();
 }
 
-template< typename VectorType >
-void VectorListingWindow<VectorType>::update(bool isSelected)
+template< typename DequeType >
+void DequeListingWindow<DequeType>::update(bool isSelected)
 {
    auto p = screenStart;
    for (int i = 0; i < nlines-2; i++)
    {
-      if (p == vector->end())
+      if (p == deque->end())
       {
 	 break;
       }
@@ -210,13 +210,13 @@ void VectorListingWindow<VectorType>::update(bool isSelected)
    Window::update(isSelected);
 }
 
-template< typename VectorType >
-void VectorListingWindow<VectorType>::processKey(int ch)
+template< typename DequeType >
+void DequeListingWindow<DequeType>::processKey(int ch)
 {
    switch (ch)
    {
       case KEY_UP:
-	 if (cursorPos != vector->begin())
+	 if (cursorPos != deque->begin())
 	 {
 	    if (cursorPos == screenStart)
 	    {
@@ -226,7 +226,7 @@ void VectorListingWindow<VectorType>::processKey(int ch)
 	 }
 	 break;
       case KEY_DOWN:
-	 if (cursorPos != vector->end()-1)
+	 if (cursorPos != deque->end()-1)
 	 {
 	    if (cursorPos == screenStart+nlines-3)
 	    {
@@ -245,14 +245,14 @@ void VectorListingWindow<VectorType>::processKey(int ch)
    }
 }
 
-template< typename VectorType >
-void VectorListingWindow<VectorType>::assignNewVector(std::vector<VectorType>* newVector)
+template< typename DequeType >
+void DequeListingWindow<DequeType>::assignNewDeque(std::deque<DequeType>* newDeque)
 {
-   vector->clear();
-   delete vector;
-   vector = newVector;
-   cursorPos = vector->begin();
-   screenStart = vector->begin();
+   deque->clear();
+   delete deque;
+   deque = newDeque;
+   cursorPos = deque->begin();
+   screenStart = deque->begin();
    wclear(window);
    update(false);
 }

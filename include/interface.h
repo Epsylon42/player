@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ncurses.h>
-#include <vector>
+#include <deque>
 
 #include "data.h"
 
@@ -13,14 +13,14 @@
 #define BORDERS_NONE  0b00000000
 
 class Window;
-template< typename VectorType > class VectorListingWindow;
+template< typename DequeType > class DequeListingWindow;
 
 extern int sizeX;
 extern int sizeY;
-extern std::vector<Window*> windows;
-extern VectorListingWindow<Artist*>* artistsWindow;
-extern VectorListingWindow<Album*>* albumsWindow;
-extern VectorListingWindow<Track*>* tracksWindow;
+extern std::deque<Window*> windows;
+extern DequeListingWindow<Artist*>* artistsWindow;
+extern DequeListingWindow<Album*>* albumsWindow;
+extern DequeListingWindow<Track*>* tracksWindow;
 extern Window* selectedWindow;
 
 void initInterface();
@@ -36,7 +36,7 @@ class Window
    int ncols;
    WINDOW* window;
    Window* selectedSubWindow;
-   std::vector<Window*> subWindows;
+   std::deque<Window*> subWindows;
    
    Window(int startY, int startX, int nlines, int ncols, char borders);
    ~Window();
@@ -54,23 +54,23 @@ class Window
    virtual void afterReshape() = 0;
 };
 
-// VectorType !MUST! be of std::vector<something> type
-template< typename VectorType > 
-class VectorListingWindow : public Window
+// DequeType !MUST! be of std::deque<something> type
+template< typename DequeType > 
+class DequeListingWindow : public Window
 {
   public:
-   typename std::vector<VectorType>::iterator cursorPos;
+   typename std::deque<DequeType>::iterator cursorPos;
  
-   VectorListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::vector<VectorType>* vector, void (*select)(VectorType) = NULL);
+   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* deque, void (*select)(DequeType) = NULL);
    void update(bool isSelected);
    void processKey(int ch);
-   void assignNewVector(std::vector<VectorType>* newVector);
+   void assignNewDeque(std::deque<DequeType>* newDeque);
 
   protected:
-   std::vector<VectorType>* vector;
-   typename std::vector<VectorType>::iterator screenStart;
+   std::deque<DequeType>* deque;
+   typename std::deque<DequeType>::iterator screenStart;
 
-   void (*select)(VectorType);
+   void (*select)(DequeType);
    void afterReshape();
 };
 

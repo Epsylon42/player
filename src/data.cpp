@@ -5,8 +5,8 @@
 #include <stdio.h>
 
 std::map<std::string, int> artistIndexes;
-std::vector<Artist*> artists;
-std::vector<Track*> testTracks;
+std::deque<Artist*> artists;
+std::deque<Track*> testTracks;
 
 void initData()
 {
@@ -28,9 +28,9 @@ void addTrack(Track* track)
    artists[artistIndexes["all"]]->addTrack(track);
 }
 
-std::vector<Track*>* getTracks()
+std::deque<Track*>* getTracks()
 {
-   std::vector<Track*>* tracks = new std::vector<Track*>;
+   std::deque<Track*>* tracks = new std::deque<Track*>;
    for (auto artist : artists)
    {
       for (auto album : artist->albums)
@@ -41,9 +41,9 @@ std::vector<Track*>* getTracks()
    return tracks;
 }
 
-std::vector<Album*>* getAlbums(bool includeUnknown)
+std::deque<Album*>* getAlbums(bool includeUnknown)
 {
-   std::vector<Album*>* albums = new std::vector<Album*>;
+   std::deque<Album*>* albums = new std::deque<Album*>;
    for (auto artist : artists)
    {
       albums->insert(albums->end(), artist->albums.begin(), artist->albums.end());
@@ -163,9 +163,9 @@ Album::~Album()
    tracks.clear();
 }
 
-std::vector<Track*>* Album::getTracks()
+std::deque<Track*>* Album::getTracks()
 {
-   std::vector<Track*>* ret = new std::vector<Track*>;
+   std::deque<Track*>* ret = new std::deque<Track*>;
    *ret = tracks;
    // std::copy(tracks.begin(), tracks.end(), ret->end());
    return ret;
@@ -205,9 +205,9 @@ Artist::~Artist()
    albums.clear();
 }
 
-std::vector<Album*>* Artist::getAlbums()
+std::deque<Album*>* Artist::getAlbums()
 {
-   std::vector<Album*>* ret = new std::vector<Album*>;
+   std::deque<Album*>* ret = new std::deque<Album*>;
    *ret = albums;
    return ret;
 }
