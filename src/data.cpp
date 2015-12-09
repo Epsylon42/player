@@ -2,6 +2,7 @@
 #include "decode.h"
 
 #include <algorithm>
+#include <exception>
 #include <string>
 #include <stdio.h>
 
@@ -30,6 +31,7 @@ void addTrack(Track* track)
       artistsMap[track->artistName] = temp;
    }
 
+   artistsMap["all"]->addTrack(track);
    artistsMap[track->artistName]->addTrack(track);   
 }
 
@@ -69,16 +71,18 @@ Track::Track(const std::string& file)
    // albumName = NULL;
    if (avformat_open_input(&container, file.c_str(), NULL, NULL) < 0)
    {
-      printf("Could not open file: %s\n", file.c_str());
-      exit(0);
+      throw std::invalid_argument(
+	 std::string("Could not open file: ") + file.c_str()
+	 );
    }
 
    decodeMetadata();
    
    if (avformat_find_stream_info(container, NULL) < 0)
    {
-      printf("Could not find stream data: %s\n", file.c_str());
-      exit(0);
+      throw std::logic_error(
+	 std::string("Could not find stream data: ") + file.c_str()
+	 );
    }
    
    streamID = -1;
@@ -92,21 +96,24 @@ Track::Track(const std::string& file)
    }
    if (streamID == -1)
    {
-      printf("No audio stream: %s\n", file.c_str());
-      exit(0);
+      throw std::logic_error(
+	 std::string("No audio stream: ") + file.c_str()
+	 );
    }
 
    codecContext = container->streams[streamID]->codec;
    codec = avcodec_find_decoder(codecContext->codec_id);
    if (codec == NULL)
    {
-      printf("Could not find decoder: %s\n", file.c_str());
-      exit(0);
+      throw std::logic_error(
+	 std::string("Could not find codec: ") + file.c_str()
+	 );
    }
    if (avcodec_open2(codecContext, codec, NULL) < 0)
    {
-      printf("Could not find codec\n");
-      exit(0);
+      throw std::logic_error(
+	 std::string("Could not open codec: ") + file.c_str()
+	 );
    }
 
    sampleFormat = getSampleFormat(this);
@@ -155,14 +162,8 @@ void Track::testPrint()
    printf("\t\t%s: %s (%s)\n", artistName.c_str(), name.c_str(), albumName.c_str());
 }
 
-Album::Album(const std::string& name, int artistIndex) :
-   name(name), artistIndex(artistIndex) {}; //FIXRIGHTNOW
-
-Album::Album(const std::string& name, const std::string& artistName) :
-   Album(name, artistsMap[artistName]) {};
-
-Album::Album(const std::string& name, Artist* artist) :
-   Album(name, artist->name) {};
+Album::Album(const std::string& name) :
+   name(name) {};
 
 Album::~Album()
 {
@@ -184,7 +185,7 @@ std::deque<Track*>* Album::getTracks()
 void Album::addTrack(Track* track)
 {
    if (tracksMap.find(track->name) != tracksMap.end())
-   // if (std::find(tracksMap.begin(), tracksMap.end(), track->name) != tracksMap.end())
+      // if (std::find(tracksMap.begin(), tracksMap.end(), track->name) != tracksMap.end())
    {
       track->name = track->name + "_";
       addTrack(track);
@@ -201,7 +202,7 @@ void Album::testPrint()
    printf("\tStarting to print album %s\n", name.c_str());
    for (auto track : tracksDeque)
    {
-	 track->testPrint();
+      track->testPrint();
    }
    printf("\tDone printing album %s\n", name.c_str());
 }
@@ -210,11 +211,11 @@ Artist::Artist(const std::string& name) :
    name(name)
 {
    Album* temp;
-   temp = new Album(this->name + ": all", this);
+   temp = new Album(this->name + ": all");
    albumsDeque.push_back(temp);
    albumsMap["all"] = temp;
 
-   temp = new Album(this->name + ": unknown", this);
+   temp = new Album(this->name + ": unknown");
    albumsDeque.push_back(temp);
    albumsMap["unknown"] = temp;
 }
@@ -247,10 +248,11 @@ void Artist::addTrack(Track* track)
 {
    if (albumsMap.find(track->albumName) == albumsMap.end())
    {
-      Album* temp = new Album(track->albumName, this);
+      Album* temp = new Album(track->albumName);
       albumsDeque.push_back(temp);
       albumsMap[track->albumName] = temp;
    }
+   albumsMap["all"]->addTrack(track);
    albumsMap[track->albumName]->addTrack(track);
 }
 
@@ -259,7 +261,7 @@ void Artist::testPrint()
    printf("Starting to print artist %s\n", name.c_str());
    for (auto album : albumsDeque)
    {
-	 album->testPrint();
+      album->testPrint();
    }
    printf("Done printing artist %s\n\n", name.c_str());
 }

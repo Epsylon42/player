@@ -48,14 +48,11 @@ struct Track
 struct Album
 {
    std::string name;
-   int artistIndex;
 
    std::map<std::string, Track*> tracksMap;
    std::deque<Track*> tracksDeque;
 
-   Album(const std::string& name, int artistIndex);
-   Album(const std::string& name, const std::string& artistName);
-   Album(const std::string& name, Artist* artist);
+   Album(const std::string& name);
    ~Album();
    std::deque<Track*>* getTracks();
    void addTrack(Track* track);
