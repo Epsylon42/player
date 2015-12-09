@@ -27,6 +27,7 @@ extern Window* selectedWindow;
 
 void initInterface();
 void updateWindows();
+void fullRefresh();
 void readKey();
 
 class Window

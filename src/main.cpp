@@ -8,6 +8,7 @@
 
 int main(int argc, char* argv[])
 {
+   av_log_set_level(AV_LOG_QUIET);
    av_register_all();
    ao_initialize();
    initData();

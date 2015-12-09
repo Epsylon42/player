@@ -42,8 +42,7 @@ void initInterface()
 
 void updateWindows()
 {
-   usleep(10000);
-   
+   usleep(10000); 
    int newSizeX = getmaxx(stdscr);
    int newSizeY = getmaxy(stdscr);
    if (newSizeX != sizeX || newSizeY != sizeY)
@@ -64,12 +63,25 @@ void updateWindows()
    readKey();
 }
 
+void fullRefresh()
+{
+   clear();
+   for (auto window : windows)
+   {
+      wclear(window->window);
+   }
+   refresh();
+}
+
 void readKey()
 {
    int ch = wgetch(selectedWindow->window);
    switch (ch)
    {
       case ERR:
+	 break;
+      case 'R':
+	 fullRefresh();
 	 break;
       case 'A':
 	 selectedWindow = artistsWindow;
