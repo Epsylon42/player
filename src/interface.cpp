@@ -25,21 +25,19 @@ void initInterface()
 						  {
 						     play(track);
 						  });
-   albumsWindow = new DequeListingWindow<Album*>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(), [](Album* album)
-						  {
-						     tracksWindow->assignNewDeque(album->getTracks());
-						  });
-   artistsWindow = new DequeListingWindow<Artist*>(0, 0, sizeY/2+1, sizeX/2, BORDERS_ALL, &artistsDeque, [](Artist* artist)
-						    {
-						       albumsWindow->assignNewDeque(artist->getAlbums());
-						       albumsWindow->processKey('S'); //TODO: replace this with something more... good
-						    });
-
+   albumsWindow = new DequeListingWindow<Album*>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(), NULL, [](Album* album)
+						 {
+						    tracksWindow->assignNewDeque(album->getTracks());
+						 });
+   artistsWindow = new DequeListingWindow<Artist*>(0, 0, sizeY/2+1, sizeX/2, BORDERS_ALL, &artistsDeque, NULL, [](Artist* artist)
+						   {
+						      albumsWindow->assignNewDeque(artist->getAlbums());
+						   });
+   
    selectedWindow = tracksWindow;
    windows.push_back(artistsWindow);
    windows.push_back(albumsWindow);
    windows.push_back(tracksWindow);
-   artistsWindow->processKey('S'); //TODO: replace also this
 }
 
 void updateWindows()
@@ -175,11 +173,18 @@ void DequeListingWindow<DequeType>::afterReshape()
 }
 
 template< typename DequeType >
-DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* deque, void (*select)(DequeType)) :
-   Window(startY, startX, nlines, ncols, borders), deque(deque), select(select)
+DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders,
+						  std::deque<DequeType>* deque,
+						  void (*select)(DequeType),
+						  void (*allocate)(DequeType)) :
+   Window(startY, startX, nlines, ncols, borders), deque(deque), select(select), allocate(allocate)
 {
    cursorPos = deque->begin();
    screenStart = deque->begin();
+   if (allocate != NULL)
+   {
+      (allocate)(*cursorPos);
+   }
 }
 
 template< typename DequeType >
@@ -223,6 +228,10 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 	       screenStart--;
 	    }
 	    cursorPos--;
+	    if (allocate != NULL)
+	    {
+	       (allocate)(*cursorPos);
+	    }
 	 }
 	 break;
       case KEY_DOWN:
@@ -233,6 +242,10 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 	       screenStart++;
 	    }
 	    cursorPos++;
+	    if (allocate != NULL)
+	    {
+	       (allocate)(*cursorPos);
+	    }
 	 }
 	 break;
       case 'S':
@@ -250,9 +263,15 @@ void DequeListingWindow<DequeType>::assignNewDeque(std::deque<DequeType>* newDeq
 {
    deque->clear();
    delete deque;
+   
    deque = newDeque;
    cursorPos = deque->begin();
    screenStart = deque->begin();
+   if (allocate != NULL)
+   {
+      (allocate)(*cursorPos);
+   }
+   
    wclear(window);
    update(false);
 }
