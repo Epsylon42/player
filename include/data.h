@@ -11,6 +11,7 @@ extern "C"
 #include <string>
 #include <map>
 #include <deque>
+#include <thread>
 
 struct Track;
 struct Album;

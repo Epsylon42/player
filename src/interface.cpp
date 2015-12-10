@@ -83,11 +83,17 @@ void readKey()
       case 'A':
 	 selectedWindow = artistsWindow;
 	 break;
-      case 'L': // 'L' stands for aLbums
+      case 'L': // a(L)bums
 	 selectedWindow = albumsWindow;
 	 break;
       case 'T':
 	 selectedWindow = tracksWindow;
+	 break;
+      case ' ':
+	 playbackControl.push(std::make_pair(COMMAND_PLAYBACK_TOGGLE, new Command()));
+	 break;
+      case 'E': // (E)nd
+	 playbackControl.push(std::make_pair(COMMAND_PLAYBACK_STOP, new Command()));
 	 break;
       default:
 	 selectedWindow->processKey(ch);
@@ -288,5 +294,5 @@ void DequeListingWindow<DequeType>::assignNewDeque(std::deque<DequeType>* newDeq
 TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<Track*>* deque) :
    DequeListingWindow<Track*>(startY, startX, nlines, ncols, borders, deque, [](Track* track)
 			      {
-				 play(track);
+				 startPlayback(track);
 			      }, NULL) {}
