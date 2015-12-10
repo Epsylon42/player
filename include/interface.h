@@ -64,7 +64,7 @@ class DequeListingWindow : public Window
   public:
    typename std::deque<DequeType>::iterator cursorPos;
  
-   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* deque, void (*select)(DequeType) = NULL, void (*allocate)(DequeType) = NULL);
+   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* deque, void (*allocate)(DequeType), void (*select)(DequeType));
    void update(bool isSelected);
    void processKey(int ch);
    void assignNewDeque(std::deque<DequeType>* newDeque);
@@ -73,8 +73,13 @@ class DequeListingWindow : public Window
    std::deque<DequeType>* deque;
    typename std::deque<DequeType>::iterator screenStart;
 
-   void (*select)(DequeType);
    void (*allocate)(DequeType);
+   void (*select)(DequeType);
    void afterReshape();
 };
 
+class TracksListingWindow : public DequeListingWindow<Track*>
+{
+  public:
+   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<Track*>* deque);
+};

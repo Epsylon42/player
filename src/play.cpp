@@ -1,8 +1,14 @@
 #include "play.h"
 
+#include <unistd.h>
+
+std::queue<std::pair<char, Command*> > playbackControl;
+bool playbackPause = false;
+
 void play(Track* track)
 {
    //av_dump_format(track->container, 1, track->filePath.c_str(), 0);
+   track->open();
    
    ao_device* device = ao_open_live(ao_default_driver_id(), track->sampleFormat, NULL);
    if (device == NULL)
@@ -14,6 +20,12 @@ void play(Track* track)
    bool endOfStream = false;
    while (!endOfStream)
    {
+      if (playbackPause)
+      {
+	 usleep(1000);
+	 continue;
+      }
+      
       AVPacket* packet = new AVPacket;
       if (av_read_frame(track->container, packet) < 0)
       {
@@ -34,6 +46,8 @@ void play(Track* track)
       av_packet_unref(packet);
       delete packet;
    }
+   playbackPause = false;
+   track->close();
 }
 
 void playPacket(AVPacket* packet, ao_device* device, Track* track)
@@ -58,4 +72,28 @@ void playPacket(AVPacket* packet, ao_device* device, Track* track)
 
    av_frame_unref(frame);
    delete frame;
+}
+
+void processPlaybackCommand(Track* track)
+{
+   if (!playbackControl.empty())
+   {
+      auto command = playbackControl.front();
+      playbackControl.pop();
+
+      switch (command.first)
+      {
+	 case COMMAND_PLAYBACK_STOP:
+	    playbackPause = true;
+	    break;
+	 case COMMAND_PLAYBACK_RESUME:
+	    playbackPause = false;
+	    break;
+	 case COMMAND_PLAYBACK_TOGGLE:
+	    playbackPause = !playbackPause;
+	    break;
+	 default:
+	    break;
+      }
+   }
 }

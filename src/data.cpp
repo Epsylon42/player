@@ -65,23 +65,34 @@ Track::Track(const std::string& file)
    container = avformat_alloc_context();
    codecContext = NULL;
    codec = NULL;
-   // filePath = NULL;
-   // name = NULL;
-   // artistName = NULL;
-   // albumName = NULL;
-   if (avformat_open_input(&container, file.c_str(), NULL, NULL) < 0)
+
+   open();
+   decodeMetadata();
+   sampleFormat = getSampleFormat(this);
+   close();
+}
+
+Track::~Track()
+{
+   delete sampleFormat;
+   delete codecContext;
+   delete container;
+}
+
+void Track::open()
+{
+   container = avformat_alloc_context();
+
+   if (avformat_open_input(&container, filePath.c_str(), NULL, NULL) < 0)
    {
       throw std::invalid_argument(
-	 std::string("Could not open file: ") + file.c_str()
+	 std::string("Could not open file: ") + filePath.c_str()
 	 );
    }
-
-   decodeMetadata();
-   
    if (avformat_find_stream_info(container, NULL) < 0)
    {
       throw std::logic_error(
-	 std::string("Could not find stream data: ") + file.c_str()
+	 std::string("Could not find stream data: ") + filePath.c_str()
 	 );
    }
    
@@ -97,7 +108,7 @@ Track::Track(const std::string& file)
    if (streamID == -1)
    {
       throw std::logic_error(
-	 std::string("No audio stream: ") + file.c_str()
+	 std::string("No audio stream: ") + filePath.c_str()
 	 );
    }
 
@@ -106,24 +117,33 @@ Track::Track(const std::string& file)
    if (codec == NULL)
    {
       throw std::logic_error(
-	 std::string("Could not find codec: ") + file.c_str()
+	 std::string("Could not find codec: ") + filePath.c_str()
 	 );
    }
    if (avcodec_open2(codecContext, codec, NULL) < 0)
    {
       throw std::logic_error(
-	 std::string("Could not open codec: ") + file.c_str()
+	 std::string("Could not open codec: ") + filePath.c_str()
 	 );
    }
-
-   sampleFormat = getSampleFormat(this);
 }
 
-Track::~Track()
+void Track::close()
 {
-   delete sampleFormat;
-   delete codecContext;
-   delete container;
+   //WARNING: this might cause memory leak
+   
+   // if (codec != NULL)
+   // {
+   //    delete codec;
+   //    codec = NULL;
+   // }
+   // if (codecContext != NULL)
+   // {
+   //    delete codecContext;
+   //    codecContext = NULL;
+   // }
+   
+   avformat_close_input(&container);
 }
 
 void Track::decodeMetadata()

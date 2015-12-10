@@ -21,10 +21,7 @@ void initInterface()
    sizeX = getmaxx(stdscr);
    sizeY = getmaxy(stdscr);
 
-   tracksWindow = new DequeListingWindow<Track*>(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks(), [](Track* track)
-						  {
-						     play(track);
-						  });
+   tracksWindow = new TracksListingWindow(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks());
    albumsWindow = new DequeListingWindow<Album*>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(), NULL, [](Album* album)
 						 {
 						    tracksWindow->assignNewDeque(album->getTracks());
@@ -49,9 +46,9 @@ void updateWindows()
    {
       sizeX = newSizeX;
       sizeY = newSizeY;
-      artistsWindow->reshapeWindow(0, 0, sizeY/2+1, sizeX/2);
-      albumsWindow->reshapeWindow(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2));
       tracksWindow->reshapeWindow(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX);
+      albumsWindow->reshapeWindow(5, sizeX/2, sizeY/2+1-5, sizeX/2+(sizeX%2));
+      artistsWindow->reshapeWindow(5, 0, sizeY/2+1-5, sizeX/2);
       clear();
       refresh();
    }
@@ -287,3 +284,9 @@ void DequeListingWindow<DequeType>::assignNewDeque(std::deque<DequeType>* newDeq
    wclear(window);
    update(false);
 }
+
+TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<Track*>* deque) :
+   DequeListingWindow<Track*>(startY, startX, nlines, ncols, borders, deque, [](Track* track)
+			      {
+				 play(track);
+			      }, NULL) {}
