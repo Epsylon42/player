@@ -5,6 +5,29 @@
 #include <stdio.h>
 #include <ao/ao.h>
 #include <unistd.h>
+#include <algorithm>
+
+void sortLibrary()
+{
+   std::sort(artistsDeque.begin()+2, artistsDeque.end(), [](Artist* fst, Artist* snd)
+	     {
+		return fst->name < snd->name;
+	     });
+   for (auto artist : artistsDeque)
+   {
+      std::sort(artist->albumsDeque.begin()+2, artist->albumsDeque.end(), [](Album* fst, Album* snd)
+		{
+		   return fst->name < snd->name;
+		});
+      for (auto album : artist->albumsDeque)
+      {
+	 std::sort(album->tracksDeque.begin(), album->tracksDeque.end(), [](Track* fst, Track* snd)
+		   {
+		      return fst->name < snd->name;
+		   });
+      }
+   }
+}
 
 int main(int argc, char* argv[])
 {
@@ -19,17 +42,18 @@ int main(int argc, char* argv[])
    {
       addTrack(new Track(argv[i]));
    }
+   sortLibrary();
 
-   // TEST PRINT ARTISTS
-   for (auto artist : artistsDeque)
-   {
-      if (artist != NULL)
-      {
-	 artist->testPrint();
-      }
-   }
+   // // TEST PRINT ARTISTS
+   // for (auto artist : artistsDeque)
+   // {
+   //    if (artist != NULL)
+   //    {
+   // 	 artist->testPrint();
+   //    }
+   // }
    
-   // play(fstTrack);
+   // // play(fstTrack);
    initInterface();
    while (true)
    {
