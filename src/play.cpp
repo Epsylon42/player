@@ -6,7 +6,7 @@
 Track* NowPlaying::track = NULL;
 int    NowPlaying::frame = 0;
 
-std::queue<std::pair<char, Command*> > playbackControl;
+std::queue<Command*> playbackControl;
 bool playbackPause = false;
 std::thread* playback = NULL;
 
@@ -55,6 +55,7 @@ void play(Track* track)
       av_packet_unref(packet);
       delete packet;
    }
+   ao_close(device); //TODO: this should be deleted even if stack unfolds(?) with exception
    playbackPause = false;
    track->close();
    usleep(1000000);
@@ -66,7 +67,7 @@ void startPlayback(Artist* artist, uint_16 options)
    std::deque<Track*>* playbackDeque = new std::deque<Track*>;
    for (auto album : artist->albumsDeque)
    {
-      if (album->name != "all")
+      if (album != artist->albumsMap["all"])
       {
 	 playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end());
       }
@@ -78,7 +79,7 @@ void startPlayback(Artist* artist, uint_16 options)
 
    if (NowPlaying::track != NULL)
    {
-      playbackControl.push(std::make_pair(COMMAND_PLAYBACK_STOP, new Command()));
+      playbackControl.push(new Command(COMMAND_PLAYBACK_STOP));
       playback->join();
    }
    playback = new std::thread(playbackThread, playbackDeque);
@@ -96,7 +97,7 @@ void startPlayback(Album* album, uint_16 options)
 
    if (NowPlaying::track != NULL)
    {
-      playbackControl.push(std::make_pair(COMMAND_PLAYBACK_STOP, new Command()));
+      playbackControl.push(new Command(COMMAND_PLAYBACK_STOP));
       playback->join();
    }
    playback = new std::thread(playbackThread, playbackDeque);
@@ -106,7 +107,7 @@ void startPlayback(Track* track, uint_16 options)
 {
    if (NowPlaying::track != NULL)
    {
-      playbackControl.push(std::make_pair(COMMAND_PLAYBACK_STOP, new Command()));
+      playbackControl.push(new Command(COMMAND_PLAYBACK_STOP));
       playback->join();
    }
    playback = new std::thread(playbackThread, new std::deque<Track*>({track}));
@@ -114,27 +115,39 @@ void startPlayback(Track* track, uint_16 options)
 
 void playbackThread(std::deque<Track*>* tracksToPlay)
 {
-   for (auto track : *tracksToPlay)
+   for (auto track = tracksToPlay->begin(); track != tracksToPlay->end();)
    {
       try
       {
-	 play(track);
+	 play(*track);
       }
-      catch (int e)
+      catch (char e)
       {
 	 switch (e)
 	 {
 	    case COMMAND_PLAYBACK_STOP:
-	       playbackPause = false;
-	       NowPlaying::reset();
 	       goto end;
+	       break;
+	    case COMMAND_PLAYBACK_NEXT:
+	       track++;
+	       continue;
+	       break;
+	    case COMMAND_PLAYBACK_PREV:
+	       if (track != tracksToPlay->begin())
+	       {
+		  track--;
+		  continue;
+	       }
 	       break;
 	    default:
 	       break;
 	 }
       }
+      track++; //TODO: move this back to the cycle definition(?) if this is possible wihout even more (in/de)crements
    }
   end:;
+   playbackPause = false;
+   NowPlaying::reset();
 }
 
 void playPacket(AVPacket* packet, ao_device* device, Track* track)
@@ -169,7 +182,7 @@ void processPlaybackCommand()
       auto command = playbackControl.front();
       playbackControl.pop();
 
-      switch (command.first)
+      switch (command->commandID)
       {
 	 case COMMAND_PLAYBACK_PAUSE:
 	    playbackPause = true;
@@ -180,16 +193,19 @@ void processPlaybackCommand()
 	 case COMMAND_PLAYBACK_TOGGLE:
 	    playbackPause = !playbackPause;
 	    break;
-	 case COMMAND_PLAYBACK_STOP:
-	    throw COMMAND_PLAYBACK_STOP;
-	    break;
 	 default:
+	    throw command->commandID;
 	    break;
       }
    }
 }
 
+
 Command::Command() {}
+
+Command::Command(char commandID) :
+   commandID(commandID) {}
+
 
 void NowPlaying::reset()
 {

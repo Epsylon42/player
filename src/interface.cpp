@@ -108,10 +108,16 @@ void readKey()
 	 selectedWindow = playbackWindow;
 	 break;
       case ' ':
-	 playbackControl.push(std::make_pair(COMMAND_PLAYBACK_TOGGLE, new Command()));
+	 playbackControl.push(new Command(COMMAND_PLAYBACK_TOGGLE));
 	 break;
       case 'E': // (E)nd
-	 playbackControl.push(std::make_pair(COMMAND_PLAYBACK_STOP, new Command()));
+	 playbackControl.push(new Command(COMMAND_PLAYBACK_STOP));
+	 break;
+      case 'p':
+	 playbackControl.push(new Command(COMMAND_PLAYBACK_PREV));
+	 break;
+      case 'n':
+	 playbackControl.push(new Command(COMMAND_PLAYBACK_NEXT));
 	 break;
       default:
 	 selectedWindow->processKey(ch);
@@ -123,7 +129,7 @@ Window::Window(int startY, int startX, int nlines, int ncols, char borders) :
 {
    window = newwin(nlines, ncols, startY, startX);
    keypad(window, true);
-   nodelay(window, true);
+   nodelay(window, true); //TODO: remove this line and make interface self-update whithout key pressing
 
    borderTop    = borders & BORDER_TOP;
    borderLeft   = borders & BORDER_LEFT;

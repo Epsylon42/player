@@ -11,6 +11,8 @@
 #define COMMAND_PLAYBACK_RESUME 0b00000100
 #define COMMAND_PLAYBACK_TOGGLE 0b00000010
 #define COMMAND_PLAYBACK_STOP   0b00001000
+#define COMMAND_PLAYBACK_PREV   0b00010000
+#define COMMAND_PLAYBACK_NEXT   0b00100000
 
 #define OPTION_PLAYBACK_SHUFFLE         0b0000000000000011
 #define OPTION_PLAYBACK_SHUFFLE_ALBUMS  0b0000000000000001
@@ -18,7 +20,7 @@
 
 struct Command;
 
-extern std::queue<std::pair<char, Command*> > playbackControl;
+extern std::queue<Command*> playbackControl;
 extern bool playbackPause;
 extern std::thread* playback;
 
@@ -32,7 +34,9 @@ void processPlaybackCommand();
 
 struct Command
 {
+   char commandID;
    Command();
+   Command(char commandID);
 };
 
 namespace NowPlaying
