@@ -8,7 +8,8 @@ int sizeY;
 std::deque<Window*> windows;
 DequeListingWindow<Artist*>* artistsWindow;
 DequeListingWindow<Album*>* albumsWindow;
-DequeListingWindow<Track*>* tracksWindow;
+TracksListingWindow* tracksWindow;
+PlaybackControlWindow* playbackWindow;
 Window* selectedWindow;
 
 
@@ -21,20 +22,33 @@ void initInterface()
    sizeX = getmaxx(stdscr);
    sizeY = getmaxy(stdscr);
 
+   
    tracksWindow = new TracksListingWindow(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks());
-   albumsWindow = new DequeListingWindow<Album*>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(), NULL, [](Album* album)
+   albumsWindow = new DequeListingWindow<Album*>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(),
+						 [](Album* album)
+						 {
+						    startPlayback(album, OPTION_PLAYBACK_SHUFFLE);
+						 },
+						 [](Album* album)
 						 {
 						    tracksWindow->assignNewDeque(album->getTracks());
 						 });
-   artistsWindow = new DequeListingWindow<Artist*>(0, 0, sizeY/2+1, sizeX/2, BORDERS_ALL, &artistsDeque, NULL, [](Artist* artist)
+   artistsWindow = new DequeListingWindow<Artist*>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, &artistsDeque,
+						   [](Artist* artist)
+						   {
+						      startPlayback(artist, OPTION_PLAYBACK_SHUFFLE);
+						   },
+						   [](Artist* artist)
 						   {
 						      albumsWindow->assignNewDeque(artist->getAlbums());
 						   });
+   playbackWindow = new PlaybackControlWindow(0, 0, 5, sizeX/2, BORDERS_ALL);
    
    selectedWindow = tracksWindow;
    windows.push_back(artistsWindow);
    windows.push_back(albumsWindow);
    windows.push_back(tracksWindow);
+   windows.push_back(playbackWindow);
 }
 
 void updateWindows()
@@ -47,8 +61,9 @@ void updateWindows()
       sizeX = newSizeX;
       sizeY = newSizeY;
       tracksWindow->reshapeWindow(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX);
-      albumsWindow->reshapeWindow(5, sizeX/2, sizeY/2+1-5, sizeX/2+(sizeX%2));
+      albumsWindow->reshapeWindow(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2));
       artistsWindow->reshapeWindow(5, 0, sizeY/2+1-5, sizeX/2);
+      playbackWindow->reshapeWindow(0, 0, 5, sizeX/2);
       clear();
       refresh();
    }
@@ -88,6 +103,9 @@ void readKey()
 	 break;
       case 'T':
 	 selectedWindow = tracksWindow;
+	 break;
+      case 'P':
+	 selectedWindow = playbackWindow;
 	 break;
       case ' ':
 	 playbackControl.push(std::make_pair(COMMAND_PLAYBACK_TOGGLE, new Command()));
@@ -180,6 +198,7 @@ void Window::update(bool isSelected)
 
    wrefresh(window);
 }
+
 
 template< typename DequeType >
 void DequeListingWindow<DequeType>::afterReshape()
@@ -291,8 +310,80 @@ void DequeListingWindow<DequeType>::assignNewDeque(std::deque<DequeType>* newDeq
    update(false);
 }
 
+
 TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<Track*>* deque) :
    DequeListingWindow<Track*>(startY, startX, nlines, ncols, borders, deque, [](Track* track)
 			      {
 				 startPlayback(track);
 			      }, NULL) {}
+
+
+PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
+   Window(startY, startX, nlines, ncols, borders) {}
+
+void PlaybackControlWindow::update(bool isSelected)
+{
+   if (NowPlaying::track != NULL)
+   {
+      wmove(window, 1, 1);
+      wattron(window, A_BOLD);
+      wprintw(window, "Track: ");
+      
+      wattroff(window, A_BOLD);
+      wprintw(window, "%s", NowPlaying::track->name.c_str());
+      wattron(window, A_BOLD);
+      
+      wmove(window, 2, 1);
+      if (playbackPause)
+      {
+	 wprintw(window, "paused:  ");
+      }
+      else
+      {
+	 wprintw(window, "playing: ");
+      }
+      wattroff(window, A_BOLD);
+      int time = NowPlaying::frame;
+      wprintw(window, "%d", time);
+   }
+   else
+   {
+      for (int i = 1; i < nlines-1; i++)
+      {
+	 wmove(window, i, 1);
+	 wclrtoeol(window);
+      }
+   }
+   
+   Window::update(isSelected);
+}
+
+void PlaybackControlWindow::processKey(int ch)
+{
+   switch (ch)
+   {
+      case KEY_RIGHT:
+	 rewindForward();
+	 break;
+      case KEY_LEFT:
+	 rewindBackward();
+	 break;
+      default:
+	 break;
+   }
+}
+
+void PlaybackControlWindow::afterReshape()
+{
+   
+}
+
+void PlaybackControlWindow::rewindForward()
+{
+   
+}
+
+void PlaybackControlWindow::rewindBackward()
+{
+   
+}

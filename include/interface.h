@@ -16,13 +16,16 @@
 
 class Window;
 template< typename DequeType > class DequeListingWindow;
+class TracksListingWindow;
+class PlaybackControlWindow;
 
 extern int sizeX;
 extern int sizeY;
 extern std::deque<Window*> windows;
 extern DequeListingWindow<Artist*>* artistsWindow;
 extern DequeListingWindow<Album*>* albumsWindow;
-extern DequeListingWindow<Track*>* tracksWindow;
+extern TracksListingWindow* tracksWindow;
+extern PlaybackControlWindow* playbackWindow;
 extern Window* selectedWindow;
 
 void initInterface();
@@ -82,4 +85,17 @@ class TracksListingWindow : public DequeListingWindow<Track*>
 {
   public:
    TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<Track*>* deque);
+};
+
+class PlaybackControlWindow : public Window
+{
+  public:
+   PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
+   void update(bool isSelected);
+   void processKey(int ch);
+
+  protected:
+   void afterReshape();
+   void rewindForward();
+   void rewindBackward();
 };
