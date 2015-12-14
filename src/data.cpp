@@ -1,43 +1,45 @@
-#include "data.h"
-#include "decode.h"
+#include "data.hpp"
+#include "decode.hpp"
 
 #include <algorithm>
 #include <exception>
+#include <memory>
 #include <string>
 #include <stdio.h>
 
-std::map<std::string, Artist*> artistsMap;
-std::deque<Artist*> artistsDeque;
-std::deque<Track*> testTracks;
+using namespace std;
+
+map<string, shared_ptr<Artist> > artistsMap;
+deque<shared_ptr<Artist> > artistsDeque;
+deque<shared_ptr<Track> > testTracks;
 
 void initData()
 {
-   Artist* temp;
-   temp = new Artist("all");
+   shared_ptr<Artist> temp(new Artist("all"));
    artistsDeque.push_back(temp);
    artistsMap["all"] = temp;
 
-   temp = new Artist("unknown");
+   temp.reset(new Artist("unknown"));
    artistsDeque.push_back(temp);
    artistsMap["unknown"] = temp;
 }
 
-void addTrack(Track* track)
+void addTrack(shared_ptr<Track> track)
 {
    if (artistsMap.find(track->artistName) == artistsMap.end())
    {
-      Artist* temp = new Artist(track->artistName);
+      shared_ptr<Artist> temp(new Artist(track->artistName));
       artistsDeque.push_back(temp);
       artistsMap[track->artistName] = temp;
    }
 
    artistsMap["all"]->addTrack(track);
-   artistsMap[track->artistName]->addTrack(track);   
+   artistsMap[track->artistName]->addTrack(track);
 }
 
-std::deque<Track*>* getTracks()
+deque<shared_ptr<Track> >* getTracks()
 {
-   std::deque<Track*>* tracks = new std::deque<Track*>;
+   deque<shared_ptr<Track> >* tracks = new deque<shared_ptr<Track> >;
    for (auto artist : artistsDeque)
    {
       for (auto album : artist->albumsDeque)
@@ -48,9 +50,9 @@ std::deque<Track*>* getTracks()
    return tracks;
 }
 
-std::deque<Album*>* getAlbums(bool includeUnknown)
+deque<shared_ptr<Album> >* getAlbums(bool includeUnknown)
 {
-   std::deque<Album*>* albums = new std::deque<Album*>;
+   deque<shared_ptr<Album> >* albums = new deque<shared_ptr<Album> >;
    for (auto artist : artistsDeque)
    {
       albums->insert(albums->end(), artist->albumsDeque.begin(), artist->albumsDeque.end());
@@ -59,12 +61,12 @@ std::deque<Album*>* getAlbums(bool includeUnknown)
    return albums;
 }
 
-Track::Track(const std::string& file)
+Track::Track(const string& file)
 {
    filePath = file;
    container = avformat_alloc_context();
-   codecContext = NULL;
-   codec = NULL;
+   codecContext = nullptr;
+   codec = nullptr;
 
    open();
    decodeMetadata();
@@ -74,8 +76,8 @@ Track::Track(const std::string& file)
 
 Track::~Track()
 {
+   close();
    delete sampleFormat;
-   delete codecContext;
    delete container;
 }
 
@@ -83,16 +85,16 @@ void Track::open()
 {
    container = avformat_alloc_context();
 
-   if (avformat_open_input(&container, filePath.c_str(), NULL, NULL) < 0)
+   if (avformat_open_input(&container, filePath.c_str(), nullptr, nullptr) < 0)
    {
-      throw std::invalid_argument(
-	 std::string("Could not open file: ") + filePath.c_str()
+      throw invalid_argument(
+	 string("Could not open file: ") + filePath.c_str()
 	 );
    }
-   if (avformat_find_stream_info(container, NULL) < 0)
+   if (avformat_find_stream_info(container, nullptr) < 0)
    {
-      throw std::logic_error(
-	 std::string("Could not find stream data: ") + filePath.c_str()
+      throw logic_error(
+	 string("Could not find stream data: ") + filePath.c_str()
 	 );
    }
    
@@ -107,23 +109,23 @@ void Track::open()
    }
    if (streamID == -1)
    {
-      throw std::logic_error(
-	 std::string("No audio stream: ") + filePath.c_str()
+      throw logic_error(
+	 string("No audio stream: ") + filePath.c_str()
 	 );
    }
 
    codecContext = container->streams[streamID]->codec;
    codec = avcodec_find_decoder(codecContext->codec_id);
-   if (codec == NULL)
+   if (codec == nullptr)
    {
-      throw std::logic_error(
-	 std::string("Could not find codec: ") + filePath.c_str()
+      throw logic_error(
+	 string("Could not find codec: ") + filePath.c_str()
 	 );
    }
-   if (avcodec_open2(codecContext, codec, NULL) < 0)
+   if (avcodec_open2(codecContext, codec, nullptr) < 0)
    {
-      throw std::logic_error(
-	 std::string("Could not open codec: ") + filePath.c_str()
+      throw logic_error(
+	 string("Could not open codec: ") + filePath.c_str()
 	 );
    }
 }
@@ -132,24 +134,27 @@ void Track::close()
 {
    //WARNING: this might cause memory leak
    
-   // if (codec != NULL)
+   // if (codec != nullptr)
    // {
    //    delete codec;
-   //    codec = NULL;
+   //    codec = nullptr;
    // }
-   // if (codecContext != NULL)
+   // if (codecContext != nullptr)
    // {
    //    delete codecContext;
-   //    codecContext = NULL;
+   //    codecContext = nullptr;
    // }
-   
-   avformat_close_input(&container);
+   if (container != NULL)
+   {
+      avformat_close_input(&container);
+      container = NULL;
+   }
 }
 
 void Track::decodeMetadata()
 {
-   AVDictionaryEntry* title = av_dict_get(container->metadata, "title", NULL, 0);
-   if (title == NULL)
+   AVDictionaryEntry* title = av_dict_get(container->metadata, "title", nullptr, 0);
+   if (title == nullptr)
    {
       name = filePath;
    }
@@ -157,8 +162,8 @@ void Track::decodeMetadata()
    {
       name = title->value;
    }
-   AVDictionaryEntry* artist = av_dict_get(container->metadata, "artist", NULL, 0);
-   if (artist == NULL)
+   AVDictionaryEntry* artist = av_dict_get(container->metadata, "artist", nullptr, 0);
+   if (artist == nullptr)
    {
       artistName = "unknown";
    }
@@ -166,8 +171,8 @@ void Track::decodeMetadata()
    {
       artistName = artist->value;
    }
-   AVDictionaryEntry* album = av_dict_get(container->metadata, "album", NULL, 0);
-   if (album == NULL)
+   AVDictionaryEntry* album = av_dict_get(container->metadata, "album", nullptr, 0);
+   if (album == nullptr)
    {
       albumName = "unknown";
    }
@@ -182,30 +187,26 @@ void Track::testPrint()
    printf("\t\t%s: %s (%s)\n", artistName.c_str(), name.c_str(), albumName.c_str());
 }
 
-Album::Album(const std::string& name) :
+Album::Album(const string& name) :
    name(name) {};
 
 Album::~Album()
 {
-   for (auto track : tracksDeque)
-   {
-      delete track;
-   }
    tracksDeque.clear();
    tracksMap.clear();
 }
 
-std::deque<Track*>* Album::getTracks()
+deque<shared_ptr<Track> >* Album::getTracks()
 {
-   std::deque<Track*>* ret = new std::deque<Track*>;
+   deque<shared_ptr<Track> >* ret = new deque<shared_ptr<Track> >;
    *ret = tracksDeque;
    return ret;
 }
 
-void Album::addTrack(Track* track)
+void Album::addTrack(shared_ptr<Track> track)
 {
    if (tracksMap.find(track->name) != tracksMap.end())
-      // if (std::find(tracksMap.begin(), tracksMap.end(), track->name) != tracksMap.end())
+      // if (find(tracksMap.begin(), tracksMap.end(), track->name) != tracksMap.end())
    {
       track->name = track->name + "_";
       addTrack(track);
@@ -227,48 +228,42 @@ void Album::testPrint()
    printf("\tDone printing album %s\n", name.c_str());
 }
 
-Artist::Artist(const std::string& name) :
+Artist::Artist(const string& name) :
    name(name)
 {
-   Album* temp;
-   temp = new Album(this->name + ": all");
+   shared_ptr<Album> temp(new Album(this->name + ": all"));
    albumsDeque.push_back(temp);
    albumsMap["all"] = temp;
 
-   temp = new Album(this->name + ": unknown");
+   temp.reset(new Album(this->name + ": unknown"));
    albumsDeque.push_back(temp);
    albumsMap["unknown"] = temp;
 }
 
 Artist::~Artist()
 {
-   for (auto album : albumsDeque)
-   {
-      delete album;
-   }
    albumsDeque.clear();
-   albumsMap.clear();
-   
+   albumsMap.clear();  
 }
 
-std::deque<Album*>* Artist::getAlbums()
+deque<shared_ptr<Album> >* Artist::getAlbums()
 {
-   std::deque<Album*>* ret = new std::deque<Album*>;
+   deque<shared_ptr<Album> >* ret = new deque<shared_ptr<Album> >;
    *ret = albumsDeque;
    return ret;
 }
 
-void Artist::addAlbum(Album* album)
+void Artist::addAlbum(shared_ptr<Album> album)
 {
    albumsDeque.push_back(album); //TODO: this needs to check if such album already exists
    albumsMap[album->name] = album;
 }
 
-void Artist::addTrack(Track* track)
+void Artist::addTrack(shared_ptr<Track> track)
 {
    if (albumsMap.find(track->albumName) == albumsMap.end())
    {
-      Album* temp = new Album(track->albumName);
+      shared_ptr<Album> temp(new Album(track->albumName));
       albumsDeque.push_back(temp);
       albumsMap[track->albumName] = temp;
    }

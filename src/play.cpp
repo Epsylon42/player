@@ -1,24 +1,29 @@
-#include "play.h"
+#include "play.hpp"
 
 #include <unistd.h>
 #include <algorithm>
+#include <memory>
 
-Track* NowPlaying::track = NULL;
-int    NowPlaying::frame = 0;
+using namespace std;
 
-std::queue<Command*> playbackControl;
+shared_ptr<Track> NowPlaying::track;
+int NowPlaying::frame = 0;
+bool NowPlaying::playing = false;
+
+queue<Command*> playbackControl;
 bool playbackPause = false;
-std::thread* playback = NULL;
+thread* playback = nullptr;
 
-void play(Track* track)
+void play(shared_ptr<Track> track)
 {
    //av_dump_format(track->container, 1, track->filePath.c_str(), 0);
    track->open();
    NowPlaying::track = track;
    NowPlaying::frame = 0;
+   NowPlaying::playing = true;
    
-   ao_device* device = ao_open_live(ao_default_driver_id(), track->sampleFormat, NULL);
-   if (device == NULL)
+   ao_device* device = ao_open_live(ao_default_driver_id(), track->sampleFormat, nullptr);
+   if (device == nullptr)
    {
       printf("Could not open device\n");
       exit(0);
@@ -62,9 +67,9 @@ void play(Track* track)
    NowPlaying::reset();
 }
 
-void startPlayback(Artist* artist, uint_16 options)
+void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 {
-   std::deque<Track*>* playbackDeque = new std::deque<Track*>;
+   deque<shared_ptr<Track> >* playbackDeque = new deque<shared_ptr<Track> >;
    for (auto album : artist->albumsDeque)
    {
       if (album != artist->albumsMap["all"])
@@ -72,48 +77,48 @@ void startPlayback(Artist* artist, uint_16 options)
 	 playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end());
       }
    }
-   if (options & OPTION_PLAYBACK_SHUFFLE_ALBUMS)
+   if (options & PLAYBACK_OPTION_SHUFFLE_ALBUMS)
    {
-      std::random_shuffle(playbackDeque->begin(), playbackDeque->end());
+      random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   if (NowPlaying::track != NULL)
+   if (NowPlaying::playing == true)
    {
-      playbackControl.push(new Command(COMMAND_PLAYBACK_STOP));
+      playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
       playback->join();
    }
-   playback = new std::thread(playbackThread, playbackDeque);
+   playback = new thread(playbackThread, playbackDeque);
 }
 
-void startPlayback(Album* album, uint_16 options)
+void startPlayback(shared_ptr<Album> album, uint_16 options)
 {
-   std::deque<Track*>* playbackDeque = new std::deque<Track*>;
+   deque<shared_ptr<Track> >* playbackDeque = new deque<shared_ptr<Track> >;
    playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end()); 
    
-   if (options & OPTION_PLAYBACK_SHUFFLE_TRACKS)
+   if (options & PLAYBACK_OPTION_SHUFFLE_TRACKS)
    {
-      std::random_shuffle(playbackDeque->begin(), playbackDeque->end());
+      random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   if (NowPlaying::track != NULL)
+   if (NowPlaying::playing == true)
    {
-      playbackControl.push(new Command(COMMAND_PLAYBACK_STOP));
+      playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
       playback->join();
    }
-   playback = new std::thread(playbackThread, playbackDeque);
+   playback = new thread(playbackThread, playbackDeque);
 }
 
-void startPlayback(Track* track, uint_16 options)
+void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
-   if (NowPlaying::track != NULL)
+   if (NowPlaying::playing == true)
    {
-      playbackControl.push(new Command(COMMAND_PLAYBACK_STOP));
+      playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
       playback->join();
    }
-   playback = new std::thread(playbackThread, new std::deque<Track*>({track}));
+   playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}));
 }
 
-void playbackThread(std::deque<Track*>* tracksToPlay)
+void playbackThread(deque<shared_ptr<Track> >* tracksToPlay)
 {
    for (auto track = tracksToPlay->begin(); track != tracksToPlay->end();)
    {
@@ -125,14 +130,14 @@ void playbackThread(std::deque<Track*>* tracksToPlay)
       {
 	 switch (e)
 	 {
-	    case COMMAND_PLAYBACK_STOP:
+	    case PLAYBACK_COMMAND_STOP:
 	       goto end;
 	       break;
-	    case COMMAND_PLAYBACK_NEXT:
+	    case PLAYBACK_COMMAND_NEXT:
 	       track++;
 	       continue;
 	       break;
-	    case COMMAND_PLAYBACK_PREV:
+	    case PLAYBACK_COMMAND_PREV:
 	       if (track != tracksToPlay->begin())
 	       {
 		  track--;
@@ -150,17 +155,17 @@ void playbackThread(std::deque<Track*>* tracksToPlay)
    NowPlaying::reset();
 }
 
-void playPacket(AVPacket* packet, ao_device* device, Track* track)
+void playPacket(AVPacket* packet, ao_device* device, shared_ptr<Track> track)
 {
    AVFrame* frame;
    frame = decodeFrame(track, track->sampleFormat, packet);
-   if (frame == NULL)
+   if (frame == nullptr)
    {
       return;
    }
       
    int dataSize =
-      av_samples_get_buffer_size(NULL,
+      av_samples_get_buffer_size(nullptr,
 				 track->codecContext->channels,
 				 frame->nb_samples,
 				 track->codecContext->sample_fmt,
@@ -184,13 +189,13 @@ void processPlaybackCommand()
 
       switch (command->commandID)
       {
-	 case COMMAND_PLAYBACK_PAUSE:
+	 case PLAYBACK_COMMAND_PAUSE:
 	    playbackPause = true;
 	    break;
-	 case COMMAND_PLAYBACK_RESUME:
+	 case PLAYBACK_COMMAND_RESUME:
 	    playbackPause = false;
 	    break;
-	 case COMMAND_PLAYBACK_TOGGLE:
+	 case PLAYBACK_COMMAND_TOGGLE:
 	    playbackPause = !playbackPause;
 	    break;
 	 default:
@@ -209,6 +214,7 @@ Command::Command(char commandID) :
 
 void NowPlaying::reset()
 {
-   track = NULL;
+   track.reset();
+   playing = false;
    frame = 0;
 }

@@ -1,4 +1,4 @@
-#include "decode.h"
+#include "decode.hpp"
 
 ao_sample_format* getSampleFormat(Track* track)
 {
@@ -32,9 +32,14 @@ ao_sample_format* getSampleFormat(Track* track)
    return sampleFormat;
 }
 
+ao_sample_format* getSampleFormat(shared_ptr<Track> track)
+{
+   return getSampleFormat(track.get());
+}
+
 // In case of successful decode frame must be unreferenced and deleted
 // manually after use
-AVFrame* decodeFrame(Track* track, ao_sample_format* sampleFormat, AVPacket* packet)
+AVFrame* decodeFrame(shared_ptr<Track> track, ao_sample_format* sampleFormat, AVPacket* packet)
 {
    AVFrame* decodedFrame = av_frame_alloc();
    int gotFrame = 0;
@@ -48,14 +53,14 @@ AVFrame* decodeFrame(Track* track, ao_sample_format* sampleFormat, AVPacket* pac
       printf("Error while decoding packet\n");
       av_frame_unref(decodedFrame);
       delete decodedFrame;
-      return NULL;
+      return nullptr;
    }
    if (!gotFrame)
    {
       printf("Did not get frame\n");
       av_frame_unref(decodedFrame);
       delete decodedFrame;
-      return NULL;
+      return nullptr;
    }
 
    return decodedFrame;

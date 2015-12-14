@@ -2,8 +2,11 @@
 
 #include <ncurses.h>
 #include <deque>
+#include <memory>
 
-#include "data.h"
+#include "data.hpp"
+
+using namespace std;
 
 #define BORDERS_ALL        0b00001111
 #define BORDER_TOP         0b00001000
@@ -21,12 +24,12 @@ class PlaybackControlWindow;
 
 extern int sizeX;
 extern int sizeY;
-extern std::deque<Window*> windows;
-extern DequeListingWindow<Artist*>* artistsWindow;
-extern DequeListingWindow<Album*>* albumsWindow;
-extern TracksListingWindow* tracksWindow;
-extern PlaybackControlWindow* playbackWindow;
-extern Window* selectedWindow;
+extern deque<shared_ptr<Window> > windows;
+extern shared_ptr<DequeListingWindow<shared_ptr<Artist> > > artistsWindow;
+extern shared_ptr<DequeListingWindow<shared_ptr<Album> > > albumsWindow;
+extern shared_ptr<TracksListingWindow> tracksWindow;
+extern shared_ptr<PlaybackControlWindow> playbackWindow;
+extern shared_ptr<Window> selectedWindow;
 
 void initInterface();
 void updateWindows();
@@ -42,7 +45,7 @@ class Window
    int ncols;
    WINDOW* window;
    Window* selectedSubWindow;
-   std::deque<Window*> subWindows;
+   deque<Window*> subWindows;
    
    Window(int startY, int startX, int nlines, int ncols, char borders);
    ~Window();
@@ -60,31 +63,31 @@ class Window
    virtual void afterReshape() = 0;
 };
 
-// DequeType !MUST! be of std::deque<something> type
+// DequeType !MUST! be of deque<something> type
 template< typename DequeType > 
 class DequeListingWindow : public Window
 {
   public:
-   typename std::deque<DequeType>::iterator cursorPos;
+   typename deque<DequeType>::iterator cursorPos;
  
-   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* deque, void (*allocate)(DequeType), void (*select)(DequeType));
+   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType>* data, void (*allocate)(DequeType), void (*select)(DequeType));
    void update(bool isSelected);
    void processKey(int ch);
-   void assignNewDeque(std::deque<DequeType>* newDeque);
+   void assignNewDeque(deque<DequeType>* newDeque);
 
   protected:
-   std::deque<DequeType>* deque;
-   typename std::deque<DequeType>::iterator screenStart;
+   deque<DequeType>* data;
+   typename deque<DequeType>::iterator screenStart;
 
    void (*allocate)(DequeType);
    void (*select)(DequeType);
    void afterReshape();
 };
 
-class TracksListingWindow : public DequeListingWindow<Track*>
+class TracksListingWindow : public DequeListingWindow<shared_ptr<Track> >
 {
   public:
-   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<Track*>* deque);
+   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<shared_ptr<Track> >* data);
 };
 
 class PlaybackControlWindow : public Window

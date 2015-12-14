@@ -1,30 +1,33 @@
-#include "data.h"
-#include "play.h"
-#include "interface.h"
+#include "data.hpp"
+#include "play.hpp"
+#include "interface.hpp"
 
 #include <stdio.h>
 #include <ao/ao.h>
 #include <unistd.h>
 #include <algorithm>
+#include <memory>
+
+using namespace std;
 
 void sortLibrary()
 {
-   std::sort(artistsDeque.begin()+2, artistsDeque.end(), [](Artist* fst, Artist* snd)
-	     {
-		return fst->name < snd->name;
-	     });
+   sort(artistsDeque.begin()+2, artistsDeque.end(), [](shared_ptr<Artist> fst, shared_ptr<Artist> snd)
+	{
+	   return fst->name < snd->name;
+	});
    for (auto artist : artistsDeque)
    {
-      std::sort(artist->albumsDeque.begin()+2, artist->albumsDeque.end(), [](Album* fst, Album* snd)
-		{
-		   return fst->name < snd->name;
-		});
+      sort(artist->albumsDeque.begin()+2, artist->albumsDeque.end(), [](shared_ptr<Album> fst, shared_ptr<Album> snd)
+	   {
+	      return fst->name < snd->name;
+	   });
       for (auto album : artist->albumsDeque)
       {
-	 std::sort(album->tracksDeque.begin(), album->tracksDeque.end(), [](Track* fst, Track* snd)
-		   {
-		      return fst->name < snd->name;
-		   });
+	 sort(album->tracksDeque.begin(), album->tracksDeque.end(), [](shared_ptr<Track> fst, shared_ptr<Track> snd)
+	      {
+		 return fst->name < snd->name;
+	      });
       }
    }
 }
@@ -35,39 +38,22 @@ int main(int argc, char* argv[])
    av_register_all();
    ao_initialize();
    initData();
-
-   Track* fstTrack = new Track(argv[1]);
-   addTrack(fstTrack);
+   
+   addTrack(make_shared<Track>(argv[1]));
    for (int i = 2; i < argc; i++)
    {
-      addTrack(new Track(argv[i]));
+      addTrack(make_shared<Track>(argv[i]));
    }
    sortLibrary();
 
-   // // TEST PRINT ARTISTS
-   // for (auto artist : artistsDeque)
-   // {
-   //    if (artist != NULL)
-   //    {
-   // 	 artist->testPrint();
-   //    }
-   // }
-   
-   // // play(fstTrack);
    initInterface();
    while (true)
    {
       updateWindows();
    }
-   // auto tracks = getTracks();
-   // for (auto p = tracks->begin(); p != tracks->end(); p++)
-   // {
-   //    printf("%p\n", (*p));
-   //    if ((*p) != NULL)
-   //    {
-   // 	 (*p)->testPrint();
-   //    }
-   // }
+
+   artistsDeque.clear();
+   artistsMap.clear();
    
    ao_shutdown();
 }
