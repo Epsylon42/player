@@ -73,6 +73,7 @@ class DequeListingWindow : public Window
    typename deque<DequeType>::iterator cursorPos;
  
    DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType>* data, void (*allocate)(DequeType), void (*select)(DequeType));
+   ~DequeListingWindow();
    void update(bool isSelected);
    void processKey(int ch);
    void assignNewDeque(deque<DequeType>* newDeque);

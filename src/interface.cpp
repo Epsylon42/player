@@ -256,6 +256,12 @@ DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nl
 }
 
 template< typename DequeType >
+DequeListingWindow<DequeType>::~DequeListingWindow()
+{
+   data->clear();
+}
+
+template< typename DequeType >
 void DequeListingWindow<DequeType>::update(bool isSelected)
 {
    auto p = screenStart;
