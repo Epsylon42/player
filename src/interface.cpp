@@ -54,6 +54,27 @@ void initInterface()
    windows.push_back(playbackWindow);
 }
 
+void interfaceLoop()
+{
+   initInterface();
+   do
+   {
+      updateWindows();
+   } while (readKey());
+   endInterface();
+}
+
+void endInterface()
+{
+   selectedWindow.reset();
+   tracksWindow.reset();
+   albumsWindow.reset();
+   artistsWindow.reset();
+   windows.clear();
+   
+   endwin();
+}
+
 void updateWindows()
 {
    usleep(10000); 
@@ -75,7 +96,6 @@ void updateWindows()
    {
       window->update(true);
    }
-   readKey();
 }
 
 void fullRefresh()
@@ -88,23 +108,27 @@ void fullRefresh()
    refresh();
 }
 
-void readKey()
+//returns false if pressed exit key
+bool readKey()
 {
    int ch = wgetch(selectedWindow->window);
    switch (ch)
    {
       case ERR:
 	 break;
+      case 'Q':
+	 return false;
+	 break;
       case 'R':
 	 fullRefresh();
 	 break;
-      case 'A':
+      case 'a':
 	 selectedWindow = artistsWindow;
 	 break;
-      case 'L': // a(L)bums
+      case 'l': // a(L)bums
 	 selectedWindow = albumsWindow;
 	 break;
-      case 'T':
+      case 't':
 	 selectedWindow = tracksWindow;
 	 break;
       case 'P':
@@ -125,6 +149,7 @@ void readKey()
       default:
 	 selectedWindow->processKey(ch);
    }
+   return true;
 }
 
 Window::Window(int startY, int startX, int nlines, int ncols, char borders) :

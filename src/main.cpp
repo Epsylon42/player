@@ -46,12 +46,8 @@ int main(int argc, char* argv[])
    }
    sortLibrary();
 
-   initInterface();
-   while (true)
-   {
-      updateWindows();
-   }
-
+   interfaceLoop();
+   
    artistsDeque.clear();
    artistsMap.clear();
    

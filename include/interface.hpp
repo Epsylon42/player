@@ -32,9 +32,11 @@ extern shared_ptr<PlaybackControlWindow> playbackWindow;
 extern shared_ptr<Window> selectedWindow;
 
 void initInterface();
+void interfaceLoop();
+void endInterface();
 void updateWindows();
 void fullRefresh();
-void readKey();
+bool readKey();
 
 class Window
 {
