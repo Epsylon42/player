@@ -70,8 +70,9 @@ void endInterface()
    tracksWindow.reset();
    albumsWindow.reset();
    artistsWindow.reset();
+   playbackWindow.reset();
    windows.clear();
-   
+
    endwin();
 }
 

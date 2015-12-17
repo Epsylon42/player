@@ -50,7 +50,7 @@ class Window
    deque<Window*> subWindows;
    
    Window(int startY, int startX, int nlines, int ncols, char borders);
-   ~Window();
+   virtual ~Window();
    void reshapeWindow(int newY, int newX, int newLines, int newColumns);
    virtual void update(bool isSelected);
    virtual void processKey(int ch) = 0;
@@ -73,9 +73,9 @@ class DequeListingWindow : public Window
    typename deque<DequeType>::iterator cursorPos;
  
    DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType>* data, void (*allocate)(DequeType), void (*select)(DequeType));
-   ~DequeListingWindow();
-   void update(bool isSelected);
-   void processKey(int ch);
+   virtual ~DequeListingWindow() override;
+   virtual void update(bool isSelected) override;
+   virtual void processKey(int ch) override;
    void assignNewDeque(deque<DequeType>* newDeque);
 
   protected:
@@ -84,7 +84,7 @@ class DequeListingWindow : public Window
 
    void (*allocate)(DequeType);
    void (*select)(DequeType);
-   void afterReshape();
+   virtual void afterReshape() override;
 };
 
 class TracksListingWindow : public DequeListingWindow<shared_ptr<Track> >
@@ -97,11 +97,11 @@ class PlaybackControlWindow : public Window
 {
   public:
    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
-   void update(bool isSelected);
-   void processKey(int ch);
+   virtual void update(bool isSelected) override;
+   virtual void processKey(int ch) override;
 
   protected:
-   void afterReshape();
+   virtual void afterReshape() override;
    void rewindForward();
    void rewindBackward();
 };
