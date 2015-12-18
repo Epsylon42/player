@@ -2,10 +2,11 @@
 #include "play.hpp"
 
 #include <unistd.h>
-#include <memory>
+#include <sys/select.h>
 
 using namespace std;
 
+mutex interfaceMutex;
 int sizeX;
 int sizeY;
 deque<shared_ptr<Window> > windows;
@@ -78,7 +79,7 @@ void endInterface()
 
 void updateWindows()
 {
-   usleep(10000); 
+   //usleep(10000); 
    int newSizeX = getmaxx(stdscr);
    int newSizeY = getmaxy(stdscr);
    if (newSizeX != ::sizeX || newSizeY != ::sizeY)
@@ -112,6 +113,14 @@ void fullRefresh()
 //returns false if pressed exit key
 bool readKey()
 {
+   timeval selectDelay;
+   selectDelay.tv_sec = 0;
+   selectDelay.tv_usec = 100000;
+   fd_set stdin;
+   FD_ZERO(&stdin);
+   FD_SET(0, &stdin);
+   select(1, &stdin, nullptr, nullptr, &selectDelay);
+   
    int ch = wgetch(::selectedWindow->window);
    switch (ch)
    {
@@ -157,8 +166,8 @@ Window::Window(int startY, int startX, int nlines, int ncols, char borders) :
    startY(startY), startX(startX), nlines(nlines), ncols(ncols)
 {
    window = newwin(nlines, ncols, startY, startX);
+   nodelay(window, true);
    keypad(window, true);
-   nodelay(window, true); //TODO: remove this line and make interface self-update whithout key pressing
 
    borderTop    = borders & BORDER_TOP;
    borderLeft   = borders & BORDER_LEFT;
@@ -217,9 +226,9 @@ void Window::reshapeWindow(int newY, int newX, int newLines, int newColumns)
    mvwin(window, startY, startX);
    wresize(window, nlines, ncols);
 
-   wclear(window);
-   wrefresh(window);
    afterReshape();
+   wclear(window);
+   update(false);
 }
 
 void Window::update(bool isSelected)
@@ -231,7 +240,9 @@ void Window::update(bool isSelected)
       win->update(win == selectedSubWindow);
    }
 
+   interfaceMutex.lock();
    wrefresh(window);
+   interfaceMutex.unlock();
 }
 
 
@@ -360,37 +371,20 @@ TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int
 
 
 PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
-   Window(startY, startX, nlines, ncols, borders) {}
+   Window(startY, startX, nlines, ncols, borders), winThread(nullptr), forceStopThread(false) {}
 
 void PlaybackControlWindow::update(bool isSelected)
 {
-   for (int i = 1; i < nlines-1; i++)
+   if (winThread == nullptr && NowPlaying::playing)
    {
-      wmove(window, i, 1);
-      wclrtoeol(window);
+      forceStopThread = false;
+      winThread = new thread(playbackWindowThread, this);
    }
-   if (NowPlaying::playing == true)
+   else if (winThread != nullptr && !NowPlaying::playing)
    {
-      wmove(window, 1, 1);
-      wattron(window, A_BOLD);
-      wprintw(window, "Track: ");
-      
-      wattroff(window, A_BOLD);
-      wprintw(window, "%s", NowPlaying::track->name.c_str());
-      wattron(window, A_BOLD);
-      
-      wmove(window, 2, 1);
-      if (::playbackPause)
-      {
-	 wprintw(window, "paused:  ");
-      }
-      else
-      {
-	 wprintw(window, "playing: ");
-      }
-      wattroff(window, A_BOLD);
-      int time = NowPlaying::frame;
-      wprintw(window, "%d", time);
+      forceStopThread = true;
+      winThread->join();
+      winThread = nullptr;
    }
    
    Window::update(isSelected);
@@ -424,4 +418,43 @@ void PlaybackControlWindow::rewindForward()
 void PlaybackControlWindow::rewindBackward()
 {
    
+}
+
+void playbackWindowThread(PlaybackControlWindow* win)
+{
+   WINDOW* window = win->window;
+   while (!win->forceStopThread)
+   {
+      for (int i = 1; i < win->nlines-1; i++)
+      {
+	 wmove(window, i, 1);
+	 wclrtoeol(window);
+      }
+      if (NowPlaying::playing == true)
+      {
+	 wmove(window, 1, 1);
+	 wattron(window, A_BOLD);
+	 wprintw(window, "Track: ");
+      
+	 wattroff(window, A_BOLD);
+	 wprintw(window, "%s", NowPlaying::track->name.c_str());
+	 wattron(window, A_BOLD);
+      
+	 wmove(window, 2, 1);
+	 if (::playbackPause)
+	 {
+	    wprintw(window, "paused:  ");
+	 }
+	 else
+	 {
+	    wprintw(window, "playing: ");
+	 }
+	 wattroff(window, A_BOLD);
+	 int time = NowPlaying::frame;
+	 wprintw(window, "%d", time);
+      }
+
+      win->Window::update(false);
+      usleep(50000);
+   }
 }

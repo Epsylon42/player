@@ -3,6 +3,8 @@
 #include <ncurses.h>
 #include <deque>
 #include <memory>
+#include <mutex>
+#include <thread>
 
 #include "data.hpp"
 
@@ -20,6 +22,7 @@ template< typename DequeType > class DequeListingWindow;
 class TracksListingWindow;
 class PlaybackControlWindow;
 
+extern std::mutex interfaceMutex;
 extern int sizeX;
 extern int sizeY;
 extern std::deque<std::shared_ptr<Window>> windows;
@@ -38,7 +41,7 @@ bool readKey();
 
 class Window
 {
-  public:
+public:
    int startX;
    int startY;
    int nlines;
@@ -53,7 +56,7 @@ class Window
    virtual void update(bool isSelected);
    virtual void processKey(int ch) = 0;
 
-  protected:
+protected:
    bool borderTop;
    bool borderLeft;
    bool borderRight;
@@ -67,7 +70,7 @@ class Window
 template< typename DequeType > 
 class DequeListingWindow : public Window
 {
-  public:
+public:
    typename std::deque<DequeType>::iterator cursorPos;
  
    DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* data, void (*allocate)(DequeType), void (*select)(DequeType));
@@ -76,7 +79,7 @@ class DequeListingWindow : public Window
    virtual void processKey(int ch)      override;
    void assignNewDeque(std::deque<DequeType>* newDeque);
 
-  protected:
+protected:
    std::deque<DequeType>* data;
    typename std::deque<DequeType>::iterator screenStart;
 
@@ -93,13 +96,19 @@ class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
 
 class PlaybackControlWindow : public Window
 {
-  public:
+public:
    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
    virtual void update(bool isSelected) override;
    virtual void processKey(int ch)      override;
 
-  protected:
+protected:
+   friend void playbackWindowThread(PlaybackControlWindow* win);
    virtual void afterReshape()          override;
    void rewindForward();
    void rewindBackward();
+
+   bool forceStopThread;
+   std::thread* winThread;
 };
+
+void playbackWindowThread(PlaybackControlWindow* win);
