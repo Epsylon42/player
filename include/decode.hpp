@@ -12,8 +12,6 @@ extern "C"
 #include <ao/ao.h>
 #include <memory>
 
-using namespace std;
-
 ao_sample_format* getSampleFormat(Track* track);
-ao_sample_format* getSampleFormat(shared_ptr<Track> track);
-AVFrame* decodeFrame(shared_ptr<Track> track, ao_sample_format* sampleFormat, AVPacket* packet);
+ao_sample_format* getSampleFormat(std::shared_ptr<Track> track);
+AVFrame* decodeFrame(std::shared_ptr<Track> track, ao_sample_format* sampleFormat, AVPacket* packet);

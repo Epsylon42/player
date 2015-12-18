@@ -34,7 +34,7 @@ void play(shared_ptr<Track> track)
    {
       processPlaybackCommand();
 
-      if (playbackPause)
+      if (::playbackPause)
       {
 	 usleep(1000);
 	 continue;
@@ -69,7 +69,7 @@ void play(shared_ptr<Track> track)
 
 void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 {
-   deque<shared_ptr<Track> >* playbackDeque = new deque<shared_ptr<Track> >;
+   deque<shared_ptr<Track>>* playbackDeque = new deque<shared_ptr<Track>>;
    for (auto album : artist->albumsDeque)
    {
       if (album != artist->albumsMap["all"])
@@ -84,15 +84,15 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 
    if (NowPlaying::playing == true)
    {
-      playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
-      playback->join();
+      ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
+      ::playback->join();
    }
-   playback = new thread(playbackThread, playbackDeque);
+   ::playback = new thread(playbackThread, playbackDeque);
 }
 
 void startPlayback(shared_ptr<Album> album, uint_16 options)
 {
-   deque<shared_ptr<Track> >* playbackDeque = new deque<shared_ptr<Track> >;
+   deque<shared_ptr<Track>>* playbackDeque = new deque<shared_ptr<Track>>;
    playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end()); 
    
    if (options & PLAYBACK_OPTION_SHUFFLE_TRACKS)
@@ -102,23 +102,23 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
 
    if (NowPlaying::playing == true)
    {
-      playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
-      playback->join();
+      ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
+      ::playback->join();
    }
-   playback = new thread(playbackThread, playbackDeque);
+   ::playback = new thread(playbackThread, playbackDeque);
 }
 
 void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
    if (NowPlaying::playing == true)
    {
-      playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
-      playback->join();
+      ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
+      ::playback->join();
    }
-   playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}));
+   ::playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}));
 }
 
-void playbackThread(deque<shared_ptr<Track> >* tracksToPlay)
+void playbackThread(deque<shared_ptr<Track>>* tracksToPlay)
 {
    for (auto track = tracksToPlay->begin(); track != tracksToPlay->end();)
    {
@@ -151,7 +151,7 @@ void playbackThread(deque<shared_ptr<Track> >* tracksToPlay)
       track++; //TODO: move this back to the cycle definition(?) if this is possible wihout even more (in/de)crements
    }
   end:;
-   playbackPause = false;
+   ::playbackPause = false;
    NowPlaying::reset();
 }
 
@@ -182,21 +182,21 @@ void playPacket(AVPacket* packet, ao_device* device, shared_ptr<Track> track)
 
 void processPlaybackCommand()
 {
-   if (!playbackControl.empty())
+   if (!::playbackControl.empty())
    {
-      auto command = playbackControl.front();
-      playbackControl.pop();
+      auto command = ::playbackControl.front();
+      ::playbackControl.pop();
 
       switch (command->commandID)
       {
 	 case PLAYBACK_COMMAND_PAUSE:
-	    playbackPause = true;
+	    ::playbackPause = true;
 	    break;
 	 case PLAYBACK_COMMAND_RESUME:
-	    playbackPause = false;
+	    ::playbackPause = false;
 	    break;
 	 case PLAYBACK_COMMAND_TOGGLE:
-	    playbackPause = !playbackPause;
+	    ::playbackPause = !::playbackPause;
 	    break;
 	 default:
 	    throw command->commandID;

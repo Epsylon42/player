@@ -14,35 +14,33 @@ extern "C"
 #include <thread>
 #include <memory>
 
-using namespace std;
-
 struct Track;
 struct Album;
 struct Artist;
 
-extern map<string, shared_ptr<Artist> > artistsMap;
-extern deque<shared_ptr<Artist> > artistsDeque;
+extern std::map<std::string, std::shared_ptr<Artist>> artistsMap;
+extern std::deque<std::shared_ptr<Artist>>            artistsDeque;
 
 void initData();
 
-void addTrack(shared_ptr<Track> track);
-deque<shared_ptr<Track> >* getTracks();
-deque<shared_ptr<Album> >* getAlbums(bool includeUnknown = true);
+void addTrack(std::shared_ptr<Track> track);
+std::deque<std::shared_ptr<Track>>* getTracks();
+std::deque<std::shared_ptr<Album>>* getAlbums(bool includeUnknown = true);
 
 struct Track
 {
-   string filePath;
-   AVFormatContext* container;
-   AVCodecContext* codecContext;
+   std::string       filePath;
+   AVFormatContext*  container;
+   AVCodecContext*   codecContext;
    AVCodec* codec;
    ao_sample_format* sampleFormat;
-   int streamID;
+   int               streamID;
 
-   string name;
-   string artistName;
-   string albumName;
+   std::string name;
+   std::string artistName;
+   std::string albumName;
 
-   Track(const string& file);
+   Track(const std::string& file);
    ~Track();
    void open();
    void close();
@@ -52,29 +50,29 @@ struct Track
 
 struct Album
 {
-   string name;
+   std::string name;
 
-   map<string, shared_ptr<Track> > tracksMap;
-   deque<shared_ptr<Track> > tracksDeque;
+   std::map<std::string, std::shared_ptr<Track>> tracksMap;
+   std::deque<std::shared_ptr<Track>>            tracksDeque;
 
-   Album(const string& name);
+   Album(const std::string& name);
    ~Album();
-   deque<shared_ptr<Track> >* getTracks();
-   void addTrack(shared_ptr<Track> track);
+   std::deque<std::shared_ptr<Track>>* getTracks();
+   void addTrack(std::shared_ptr<Track> track);
    void testPrint();
 };
 
 struct Artist
 {
-   string name;
+   std::string name;
 
-   map<string, shared_ptr<Album> > albumsMap;
-   deque<shared_ptr<Album> > albumsDeque;
+   std::map<std::string, std::shared_ptr<Album>> albumsMap;
+   std::deque<std::shared_ptr<Album>>            albumsDeque;
 
-   Artist(const string& name);
+   Artist(const std::string& name);
    ~Artist();
-   deque<shared_ptr<Album> >* getAlbums();
-   void addAlbum(shared_ptr<Album> album);
-   void addTrack(shared_ptr<Track> track);
+   std::deque<std::shared_ptr<Album>>* getAlbums();
+   void addAlbum(std::shared_ptr<Album> album);
+   void addTrack(std::shared_ptr<Track> track);
    void testPrint();
 };

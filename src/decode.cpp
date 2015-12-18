@@ -32,14 +32,14 @@ ao_sample_format* getSampleFormat(Track* track)
    return sampleFormat;
 }
 
-ao_sample_format* getSampleFormat(shared_ptr<Track> track)
+ao_sample_format* getSampleFormat(std::shared_ptr<Track> track)
 {
    return getSampleFormat(track.get());
 }
 
 // In case of successful decode frame must be unreferenced and deleted
 // manually after use
-AVFrame* decodeFrame(shared_ptr<Track> track, ao_sample_format* sampleFormat, AVPacket* packet)
+AVFrame* decodeFrame(std::shared_ptr<Track> track, ao_sample_format* sampleFormat, AVPacket* packet)
 {
    AVFrame* decodedFrame = av_frame_alloc();
    int gotFrame = 0;

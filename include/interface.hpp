@@ -6,8 +6,6 @@
 
 #include "data.hpp"
 
-using namespace std;
-
 #define BORDERS_ALL        0b00001111
 #define BORDER_TOP         0b00001000
 #define BORDER_LEFT        0b00000100
@@ -24,12 +22,12 @@ class PlaybackControlWindow;
 
 extern int sizeX;
 extern int sizeY;
-extern deque<shared_ptr<Window> > windows;
-extern shared_ptr<DequeListingWindow<shared_ptr<Artist> > > artistsWindow;
-extern shared_ptr<DequeListingWindow<shared_ptr<Album> > > albumsWindow;
-extern shared_ptr<TracksListingWindow> tracksWindow;
-extern shared_ptr<PlaybackControlWindow> playbackWindow;
-extern shared_ptr<Window> selectedWindow;
+extern std::deque<std::shared_ptr<Window>> windows;
+extern std::shared_ptr<DequeListingWindow<std::shared_ptr<Artist>>> artistsWindow;
+extern std::shared_ptr<DequeListingWindow<std::shared_ptr<Album>>>  albumsWindow;
+extern std::shared_ptr<TracksListingWindow>                         tracksWindow;
+extern std::shared_ptr<PlaybackControlWindow>                       playbackWindow;
+extern std::shared_ptr<Window> selectedWindow;
 
 void initInterface();
 void interfaceLoop();
@@ -47,11 +45,11 @@ class Window
    int ncols;
    WINDOW* window;
    Window* selectedSubWindow;
-   deque<Window*> subWindows;
+   std::deque<Window*> subWindows;
    
    Window(int startY, int startX, int nlines, int ncols, char borders);
-   virtual ~Window();
    void reshapeWindow(int newY, int newX, int newLines, int newColumns);
+   virtual ~Window();
    virtual void update(bool isSelected);
    virtual void processKey(int ch) = 0;
 
@@ -65,32 +63,32 @@ class Window
    virtual void afterReshape() = 0;
 };
 
-// DequeType !MUST! be of deque<something> type
+// DequeType !MUST! be of std::deque<something> type
 template< typename DequeType > 
 class DequeListingWindow : public Window
 {
   public:
-   typename deque<DequeType>::iterator cursorPos;
+   typename std::deque<DequeType>::iterator cursorPos;
  
-   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType>* data, void (*allocate)(DequeType), void (*select)(DequeType));
-   virtual ~DequeListingWindow() override;
+   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* data, void (*allocate)(DequeType), void (*select)(DequeType));
+   virtual ~DequeListingWindow()        override;
    virtual void update(bool isSelected) override;
-   virtual void processKey(int ch) override;
-   void assignNewDeque(deque<DequeType>* newDeque);
+   virtual void processKey(int ch)      override;
+   void assignNewDeque(std::deque<DequeType>* newDeque);
 
   protected:
-   deque<DequeType>* data;
-   typename deque<DequeType>::iterator screenStart;
+   std::deque<DequeType>* data;
+   typename std::deque<DequeType>::iterator screenStart;
 
    void (*allocate)(DequeType);
    void (*select)(DequeType);
-   virtual void afterReshape() override;
+   virtual void afterReshape()          override;
 };
 
-class TracksListingWindow : public DequeListingWindow<shared_ptr<Track> >
+class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
 {
   public:
-   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<shared_ptr<Track> >* data);
+   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>>* data);
 };
 
 class PlaybackControlWindow : public Window
@@ -98,10 +96,10 @@ class PlaybackControlWindow : public Window
   public:
    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
    virtual void update(bool isSelected) override;
-   virtual void processKey(int ch) override;
+   virtual void processKey(int ch)      override;
 
   protected:
-   virtual void afterReshape() override;
+   virtual void afterReshape()          override;
    void rewindForward();
    void rewindBackward();
 };
