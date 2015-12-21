@@ -77,7 +77,7 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 	 playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end());
       }
    }
-   if (options & PLAYBACK_OPTION_SHUFFLE_ALBUMS)
+   if (options & PLAYBACK_OPTION_SHUFFLE)
    {
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
@@ -87,7 +87,7 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
       ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
       ::playback->join();
    }
-   ::playback = new thread(playbackThread, playbackDeque);
+   ::playback = new thread(playbackThread, playbackDeque, 0);
 }
 
 void startPlayback(shared_ptr<Album> album, uint_16 options)
@@ -95,7 +95,7 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
    deque<shared_ptr<Track>>* playbackDeque = new deque<shared_ptr<Track>>;
    playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end()); 
    
-   if (options & PLAYBACK_OPTION_SHUFFLE_TRACKS)
+   if (options & PLAYBACK_OPTION_SHUFFLE)
    {
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
@@ -105,7 +105,7 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
       ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
       ::playback->join();
    }
-   ::playback = new thread(playbackThread, playbackDeque);
+   ::playback = new thread(playbackThread, playbackDeque, 0);
 }
 
 void startPlayback(shared_ptr<Track> track, uint_16 options)
@@ -115,10 +115,10 @@ void startPlayback(shared_ptr<Track> track, uint_16 options)
       ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
       ::playback->join();
    }
-   ::playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}));
+   ::playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}), 0);
 }
 
-void playbackThread(deque<shared_ptr<Track>>* tracksToPlay)
+void playbackThread(deque<shared_ptr<Track>>* tracksToPlay, uint_16 options)
 {
    for (auto track = tracksToPlay->begin(); track != tracksToPlay->end();)
    {

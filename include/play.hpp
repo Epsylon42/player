@@ -15,9 +15,7 @@ const uint_8 PLAYBACK_COMMAND_STOP   = 0b00001000;
 const uint_8 PLAYBACK_COMMAND_PREV   = 0b00010000;
 const uint_8 PLAYBACK_COMMAND_NEXT   = 0b00100000;
 
-const uint_16 PLAYBACK_OPTION_SHUFFLE         = 0b0000000000000011;
-const uint_16 PLAYBACK_OPTION_SHUFFLE_ALBUMS  = 0b0000000000000001;
-const uint_16 PLAYBACK_OPTION_SHUFFLE_TRACKS  = 0b0000000000000010;
+const uint_16 PLAYBACK_OPTION_SHUFFLE = 0b0000000000000011;
 
 struct Command;
 
@@ -29,7 +27,7 @@ void play(std::shared_ptr<Track> track);
 void startPlayback(std::shared_ptr<Artist> artist, uint_16 options = 0);
 void startPlayback(std::shared_ptr<Album> album, uint_16 options = 0);
 void startPlayback(std::shared_ptr<Track> track, uint_16 options = 0);
-void playbackThread(std::deque<std::shared_ptr<Track> >* tracksToPlay);
+void playbackThread(std::deque<std::shared_ptr<Track> >* tracksToPlay, uint_16 options);
 void playPacket(AVPacket* packet, ao_device* device, std::shared_ptr<Track> track);
 void processPlaybackCommand();
 

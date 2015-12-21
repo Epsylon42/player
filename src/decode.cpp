@@ -5,26 +5,15 @@ ao_sample_format* getSampleFormat(Track* track)
    ao_sample_format* sampleFormat = new ao_sample_format;
    AVPacket packet;
    av_read_frame(track->container, &packet);
-   switch(track->codecContext->sample_fmt)
+
+   sampleFormat->bits = av_get_bits_per_sample(track->codec->id);
+   if (sampleFormat->bits == 0)
    {
-      case AV_SAMPLE_FMT_U8:
-      case AV_SAMPLE_FMT_U8P:
-	 sampleFormat->bits = 8;
-	 break;
-      case AV_SAMPLE_FMT_S16:
-      case AV_SAMPLE_FMT_S16P:
-	 sampleFormat->bits = 16;
-	 break;
-      case AV_SAMPLE_FMT_S32:
-      case AV_SAMPLE_FMT_S32P:
-	 sampleFormat->bits = 32;
-	 break;
-      default:
-	 printf("Unsupported format\n");
-	 exit(0);
+      printf("Unsupported format\n");
+      exit(0);
    }
    sampleFormat->channels = track->codecContext->channels;
-   sampleFormat->rate = track->codecContext->sample_rate/sampleFormat->channels;
+   sampleFormat->rate = track->codecContext->sample_rate;
    sampleFormat->byte_format = AO_FMT_NATIVE;
    sampleFormat->matrix = 0;
    av_seek_frame(track->container, track->streamID, 0, AVSEEK_FLAG_ANY);
