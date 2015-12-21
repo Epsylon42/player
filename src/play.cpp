@@ -10,7 +10,7 @@ shared_ptr<Track> NowPlaying::track;
 int NowPlaying::frame = 0;
 bool NowPlaying::playing = false;
 
-queue<Command*> playbackControl;
+queue<unique_ptr<Command>> playbackControl;
 bool playbackPause = false;
 thread* playback = nullptr;
 
@@ -41,6 +41,7 @@ void play(shared_ptr<Track> track)
       }
       
       AVPacket* packet = new AVPacket;
+      av_init_packet(packet);
       if (av_read_frame(track->container, packet) < 0)
       {
 	 delete packet;
@@ -58,6 +59,7 @@ void play(shared_ptr<Track> track)
       playPacket(packet, device, track);
       
       av_packet_unref(packet);
+      av_free_packet(packet);
       delete packet;
    }
    ao_close(device); //TODO: this should be deleted even if stack unfolds(?) with exception
@@ -84,7 +86,7 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 
    if (NowPlaying::playing == true)
    {
-      ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
+      ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
       ::playback->join();
    }
    ::playback = new thread(playbackThread, playbackDeque, 0);
@@ -102,7 +104,7 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
 
    if (NowPlaying::playing == true)
    {
-      ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
+      ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
       ::playback->join();
    }
    ::playback = new thread(playbackThread, playbackDeque, 0);
@@ -112,7 +114,7 @@ void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
    if (NowPlaying::playing == true)
    {
-      ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
+      ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
       ::playback->join();
    }
    ::playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}), 0);
@@ -151,6 +153,8 @@ void playbackThread(deque<shared_ptr<Track>>* tracksToPlay, uint_16 options)
       track++; //TODO: move this back to the cycle definition(?) if this is possible wihout even more (in/de)crements
    }
   end:;
+   tracksToPlay->clear();
+   delete tracksToPlay;
    ::playbackPause = false;
    NowPlaying::reset();
 }
@@ -177,6 +181,7 @@ void playPacket(AVPacket* packet, ao_device* device, shared_ptr<Track> track)
    NowPlaying::frame++;
    
    av_frame_unref(frame);
+   av_frame_free(&frame);
    delete frame;
 }
 
@@ -184,7 +189,7 @@ void processPlaybackCommand()
 {
    if (!::playbackControl.empty())
    {
-      auto command = ::playbackControl.front();
+      unique_ptr<Command> command = move(::playbackControl.front());
       ::playbackControl.pop();
 
       switch (command->commandID)

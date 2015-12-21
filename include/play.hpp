@@ -19,7 +19,7 @@ const uint_16 PLAYBACK_OPTION_SHUFFLE = 0b0000000000000011;
 
 struct Command;
 
-extern std::queue<Command*> playbackControl;
+extern std::queue<std::unique_ptr<Command>> playbackControl;
 extern bool playbackPause;
 extern std::thread* playback;
 

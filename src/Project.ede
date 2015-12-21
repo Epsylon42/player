@@ -12,5 +12,5 @@
       :configuration-variables nil
       :ldlibs '("ncurses" "avcodec" "avformat" "avutil" "ao")))
   :makefile-type 'Makefile.am
-  :variables '(("AM_CXXFLAGS" . "-std=c++11 -pthread") ("AM_CPPFLAGS" . "-I../include"))
+  :variables '(("AM_CXXFLAGS" . "-std=c++14 -pthread") ("AM_CPPFLAGS" . "-I../include"))
   :configuration-variables nil)

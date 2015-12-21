@@ -145,16 +145,16 @@ bool readKey()
 	 ::selectedWindow = ::playbackWindow;
 	 break;
       case ' ':
-	 ::playbackControl.push(new Command(PLAYBACK_COMMAND_TOGGLE));
+	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_TOGGLE));
 	 break;
       case 'E': // (E)nd
-	 ::playbackControl.push(new Command(PLAYBACK_COMMAND_STOP));
+	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
 	 break;
       case 'p':
-	 ::playbackControl.push(new Command(PLAYBACK_COMMAND_PREV));
+	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_PREV));
 	 break;
       case 'n':
-	 ::playbackControl.push(new Command(PLAYBACK_COMMAND_NEXT));
+	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_NEXT));
 	 break;
       default:
 	 ::selectedWindow->processKey(ch);
@@ -384,6 +384,7 @@ void PlaybackControlWindow::update(bool isSelected)
    {
       forceStopThread = true;
       winThread->join();
+      delete winThread;
       winThread = nullptr;
    }
    
