@@ -5,16 +5,17 @@
 #include <sys/select.h>
 
 using namespace std;
+using namespace interface;
 
-mutex interfaceMutex;
-int sizeX;
-int sizeY;
-deque<shared_ptr<Window> > windows;
-shared_ptr<DequeListingWindow<shared_ptr<Artist>>> artistsWindow;
-shared_ptr<DequeListingWindow<shared_ptr<Album>>>  albumsWindow;
-shared_ptr<TracksListingWindow>                      tracksWindow;
-shared_ptr<PlaybackControlWindow>                    playbackWindow;
-shared_ptr<Window> selectedWindow;
+mutex interface::interfaceMutex;
+int interface::sizeX;
+int interface::sizeY;
+deque<shared_ptr<Window> > interface::windows;
+shared_ptr<DequeListingWindow<shared_ptr<Artist>>> interface::artistsWindow;
+shared_ptr<DequeListingWindow<shared_ptr<Album>>>  interface::albumsWindow;
+shared_ptr<TracksListingWindow>                    interface::tracksWindow;
+shared_ptr<PlaybackControlWindow>                  interface::playbackWindow;
+shared_ptr<Window> interface::selectedWindow;
 
 
 void initInterface()
@@ -23,36 +24,36 @@ void initInterface()
    curs_set(FALSE);
    noecho();
 
-   ::sizeX = getmaxx(stdscr);
-   ::sizeY = getmaxy(stdscr);
+   sizeX = getmaxx(stdscr);
+   sizeY = getmaxy(stdscr);
 
    
-   ::tracksWindow = make_shared<TracksListingWindow>(::sizeY/2+1, 0, ::sizeY/2-1+(::sizeY%2), ::sizeX, BORDERS_ALL, getTracks());
-   ::albumsWindow = make_shared<DequeListingWindow<shared_ptr<Album>>>(0, ::sizeX/2, ::sizeY/2+1, ::sizeX/2+(::sizeX%2), BORDERS_ALL, getAlbums(),
+   tracksWindow = make_shared<TracksListingWindow>(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks());
+   albumsWindow = make_shared<DequeListingWindow<shared_ptr<Album>>>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(),
 						 [](shared_ptr<Album> album)
 						 {
 						    startPlayback(album, PLAYBACK_OPTION_SHUFFLE);
 						 },
 						 [](shared_ptr<Album> album)
 						 {
-						    ::tracksWindow->assignNewDeque(album->getTracks());
+						    tracksWindow->assignNewDeque(album->getTracks());
 						 });
-   ::artistsWindow = make_shared<DequeListingWindow<shared_ptr<Artist>>>(5, 0, ::sizeY/2+1-5, ::sizeX/2, BORDERS_ALL, &::artistsDeque,
+   artistsWindow = make_shared<DequeListingWindow<shared_ptr<Artist>>>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, &data::artistsDeque,
 						   [](shared_ptr<Artist> artist)
 						   {
 						      startPlayback(artist, PLAYBACK_OPTION_SHUFFLE);
 						   },
 						   [](shared_ptr<Artist> artist)
 						   {
-						      ::albumsWindow->assignNewDeque(artist->getAlbums());
+						      albumsWindow->assignNewDeque(artist->getAlbums());
 						   });
-   ::playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 5, ::sizeX/2, BORDERS_ALL);
+   playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 5, sizeX/2, BORDERS_ALL);
    
-   ::selectedWindow =  ::tracksWindow;
-   ::windows.push_back(::artistsWindow);
-   ::windows.push_back(::albumsWindow);
-   ::windows.push_back(::tracksWindow);
-   ::windows.push_back(::playbackWindow);
+   selectedWindow =  tracksWindow;
+   windows.push_back(artistsWindow);
+   windows.push_back(albumsWindow);
+   windows.push_back(tracksWindow);
+   windows.push_back(playbackWindow);
 }
 
 void interfaceLoop()
@@ -67,12 +68,12 @@ void interfaceLoop()
 
 void endInterface()
 {
-   ::selectedWindow.reset();
-   ::tracksWindow.reset();
-   ::albumsWindow.reset();
-   ::artistsWindow.reset();
-   ::playbackWindow.reset();
-   ::windows.clear();
+   selectedWindow.reset();
+   tracksWindow.reset();
+   albumsWindow.reset();
+   artistsWindow.reset();
+   playbackWindow.reset();
+   windows.clear();
 
    endwin();
 }
@@ -82,19 +83,19 @@ void updateWindows()
    //usleep(10000); 
    int newSizeX = getmaxx(stdscr);
    int newSizeY = getmaxy(stdscr);
-   if (newSizeX != ::sizeX || newSizeY != ::sizeY)
+   if (newSizeX != sizeX || newSizeY != sizeY)
    {
-      ::sizeX = newSizeX;
-      ::sizeY = newSizeY;
-      ::tracksWindow->reshapeWindow(::sizeY/2+1, 0, ::sizeY/2-1+(::sizeY%2), ::sizeX);
-      ::albumsWindow->reshapeWindow(0, ::sizeX/2, ::sizeY/2+1, ::sizeX/2+(::sizeX%2));
-      ::artistsWindow->reshapeWindow(5, 0, ::sizeY/2+1-5, ::sizeX/2);
-      ::playbackWindow->reshapeWindow(0, 0, 5, ::sizeX/2);
+      sizeX = newSizeX;
+      sizeY = newSizeY;
+      tracksWindow->reshapeWindow(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX);
+      albumsWindow->reshapeWindow(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2));
+      artistsWindow->reshapeWindow(5, 0, sizeY/2+1-5, sizeX/2);
+      playbackWindow->reshapeWindow(0, 0, 5, sizeX/2);
       clear();
       refresh();
    }
    
-   for (auto window : ::windows)
+   for (auto window : windows)
    {
       window->update(true);
    }
@@ -103,7 +104,7 @@ void updateWindows()
 void fullRefresh()
 {
    clear();
-   for (auto window : ::windows)
+   for (auto window : windows)
    {
       wclear(window->window);
    }
@@ -121,7 +122,7 @@ bool readKey()
    FD_SET(0, &stdin);
    select(1, &stdin, nullptr, nullptr, &selectDelay);
    
-   int ch = wgetch(::selectedWindow->window);
+   int ch = wgetch(selectedWindow->window);
    switch (ch)
    {
       case ERR:
@@ -133,31 +134,31 @@ bool readKey()
 	 fullRefresh();
 	 break;
       case 'a':
-	 ::selectedWindow = ::artistsWindow;
+	 selectedWindow = artistsWindow;
 	 break;
       case 'l': // a(L)bums
-	 ::selectedWindow = ::albumsWindow;
+	 selectedWindow = albumsWindow;
 	 break;
       case 't':
-	 ::selectedWindow = ::tracksWindow;
+	 selectedWindow = tracksWindow;
 	 break;
       case 'P':
-	 ::selectedWindow = ::playbackWindow;
+	 selectedWindow = playbackWindow;
 	 break;
       case ' ':
-	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_TOGGLE));
+	 sendPlaybackCommand(new Command(PLAYBACK_COMMAND_TOGGLE));
 	 break;
       case 'E': // (E)nd
-	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
+	 sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
 	 break;
       case 'p':
-	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_PREV));
+	 sendPlaybackCommand(new Command(PLAYBACK_COMMAND_PREV));
 	 break;
       case 'n':
-	 ::playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_NEXT));
+	 sendPlaybackCommand(new Command(PLAYBACK_COMMAND_NEXT));
 	 break;
       default:
-	 ::selectedWindow->processKey(ch);
+	 selectedWindow->processKey(ch);
    }
    return true;
 }
@@ -183,7 +184,7 @@ Window::~Window()
 void Window::displayBorders()
 {
    char frame;
-   if (this == ::selectedWindow.get())
+   if (this == selectedWindow.get())
    {
       frame = '#';
    }
@@ -288,7 +289,7 @@ void DequeListingWindow<DequeType>::update(bool isSelected)
       if (p == cursorPos)
       {
 	 wattron(window, A_REVERSE);
-	 if (this == ::selectedWindow.get())
+	 if (this == selectedWindow.get())
 	 {
 	    wattron(window, A_BOLD);
 	 }
@@ -375,12 +376,12 @@ PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines,
 
 void PlaybackControlWindow::update(bool isSelected)
 {
-   if (winThread == nullptr && NowPlaying::playing)
+   if (winThread == nullptr && playbackInProcess())
    {
       forceStopThread = false;
       winThread = new thread(playbackWindowThread, this);
    }
-   else if (winThread != nullptr && !NowPlaying::playing)
+   else if (winThread != nullptr && !playbackInProcess())
    {
       forceStopThread = true;
       winThread->join();
@@ -431,18 +432,18 @@ void playbackWindowThread(PlaybackControlWindow* win)
 	 wmove(window, i, 1);
 	 wclrtoeol(window);
       }
-      if (NowPlaying::playing == true)
+      if (playbackInProcess() && play::NowPlaying::track)
       {
 	 wmove(window, 1, 1);
 	 wattron(window, A_BOLD);
 	 wprintw(window, "Track: ");
       
 	 wattroff(window, A_BOLD);
-	 wprintw(window, "%s", NowPlaying::track->name.c_str());
+	 wprintw(window, "%s", play::NowPlaying::track->name.c_str());
 	 wattron(window, A_BOLD);
       
 	 wmove(window, 2, 1);
-	 if (::playbackPause)
+	 if (play::playbackPause)
 	 {
 	    wprintw(window, "paused:  ");
 	 }
@@ -451,7 +452,7 @@ void playbackWindowThread(PlaybackControlWindow* win)
 	    wprintw(window, "playing: ");
 	 }
 	 wattroff(window, A_BOLD);
-	 int time = NowPlaying::frame;
+	 int time = play::NowPlaying::frame;
 	 wprintw(window, "%d", time);
       }
 

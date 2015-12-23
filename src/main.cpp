@@ -12,11 +12,11 @@ using namespace std;
 
 void sortLibrary()
 {
-   sort(::artistsDeque.begin()+2, ::artistsDeque.end(), [](shared_ptr<Artist> fst, shared_ptr<Artist> snd)
+   sort(data::artistsDeque.begin()+2, data::artistsDeque.end(), [](shared_ptr<Artist> fst, shared_ptr<Artist> snd)
 	{
 	   return fst->name < snd->name;
 	});
-   for (auto artist : ::artistsDeque)
+   for (auto artist : data::artistsDeque)
    {
       sort(artist->albumsDeque.begin()+2, artist->albumsDeque.end(), [](shared_ptr<Album> fst, shared_ptr<Album> snd)
 	   {
@@ -48,8 +48,8 @@ int main(int argc, char* argv[])
 
    interfaceLoop();
    
-   artistsDeque.clear();
-   artistsMap.clear();
+   data::artistsDeque.clear();
+   data::artistsMap.clear();
    
    ao_shutdown();
 }

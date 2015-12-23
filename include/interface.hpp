@@ -22,15 +22,18 @@ template< typename DequeType > class DequeListingWindow;
 class TracksListingWindow;
 class PlaybackControlWindow;
 
-extern std::mutex interfaceMutex;
-extern int sizeX;
-extern int sizeY;
-extern std::deque<std::shared_ptr<Window>> windows;
-extern std::shared_ptr<DequeListingWindow<std::shared_ptr<Artist>>> artistsWindow;
-extern std::shared_ptr<DequeListingWindow<std::shared_ptr<Album>>>  albumsWindow;
-extern std::shared_ptr<TracksListingWindow>                         tracksWindow;
-extern std::shared_ptr<PlaybackControlWindow>                       playbackWindow;
-extern std::shared_ptr<Window> selectedWindow;
+namespace interface
+{
+   extern std::mutex interfaceMutex;
+   extern int sizeX;
+   extern int sizeY;
+   extern std::deque<std::shared_ptr<Window>> windows;
+   extern std::shared_ptr<DequeListingWindow<std::shared_ptr<Artist>>> artistsWindow;
+   extern std::shared_ptr<DequeListingWindow<std::shared_ptr<Album>>>  albumsWindow;
+   extern std::shared_ptr<TracksListingWindow>                         tracksWindow;
+   extern std::shared_ptr<PlaybackControlWindow>                       playbackWindow;
+   extern std::shared_ptr<Window> selectedWindow;
+}
 
 void initInterface();
 void interfaceLoop();

@@ -8,39 +8,39 @@
 #include <stdio.h>
 
 using namespace std;
+using namespace data;
 
-map<string, shared_ptr<Artist> > artistsMap;
-deque<shared_ptr<Artist> > artistsDeque;
-deque<shared_ptr<Track> > testTracks;
+map<string, shared_ptr<Artist>> data::artistsMap;
+deque<shared_ptr<Artist>>       data::artistsDeque;
 
 void initData()
 {
    shared_ptr<Artist> temp(new Artist("all"));
-   ::artistsDeque.push_back(temp);
-   ::artistsMap["all"] = temp;
+   artistsDeque.push_back(temp);
+   artistsMap["all"] = temp;
 
    temp.reset(new Artist("unknown"));
-   ::artistsDeque.push_back(temp);
-   ::artistsMap["unknown"] = temp;
+   artistsDeque.push_back(temp);
+   artistsMap["unknown"] = temp;
 }
 
 void addTrack(shared_ptr<Track> track)
 {
-   if (::artistsMap.find(track->artistName) == ::artistsMap.end())
+   if (artistsMap.find(track->artistName) == artistsMap.end())
    {
       shared_ptr<Artist> temp(new Artist(track->artistName));
-      ::artistsDeque.push_back(temp);
-      ::artistsMap[track->artistName] = temp;
+      artistsDeque.push_back(temp);
+      artistsMap[track->artistName] = temp;
    }
 
-   ::artistsMap["all"]->addTrack(track);
-   ::artistsMap[track->artistName]->addTrack(track);
+   artistsMap["all"]->addTrack(track);
+   artistsMap[track->artistName]->addTrack(track);
 }
 
 deque<shared_ptr<Track> >* getTracks()
 {
    deque<shared_ptr<Track> >* tracks = new deque<shared_ptr<Track> >;
-   for (auto artist : ::artistsDeque)
+   for (auto artist : artistsDeque)
    {
       for (auto album : artist->albumsDeque)
       {
@@ -54,7 +54,7 @@ deque<shared_ptr<Track> >* getTracks()
 deque<shared_ptr<Album> >* getAlbums(bool includeUnknown)
 {
    deque<shared_ptr<Album> >* albums = new deque<shared_ptr<Album> >;
-   for (auto artist : ::artistsDeque)
+   for (auto artist : artistsDeque)
    {
       albums->insert(albums->end(), artist->albumsDeque.begin(), artist->albumsDeque.end());
    }
@@ -145,10 +145,10 @@ void Track::close()
    //    delete codecContext;
    //    codecContext = nullptr;
    // }
-   if (container != NULL)
+   if (container != nullptr)
    {
       avformat_close_input(&container);
-      container = NULL;
+      container = nullptr;
    }
 }
 

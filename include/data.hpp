@@ -18,8 +18,11 @@ struct Track;
 struct Album;
 struct Artist;
 
-extern std::map<std::string, std::shared_ptr<Artist>> artistsMap;
-extern std::deque<std::shared_ptr<Artist>>            artistsDeque;
+namespace data
+{
+   extern std::map<std::string, std::shared_ptr<Artist>> artistsMap;
+   extern std::deque<std::shared_ptr<Artist>>            artistsDeque;
+}
 
 void initData();
 
