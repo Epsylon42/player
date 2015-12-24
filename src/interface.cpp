@@ -38,7 +38,7 @@ void initInterface()
 						 {
 						    tracksWindow->assignNewDeque(album->getTracks());
 						 });
-   artistsWindow = make_shared<DequeListingWindow<shared_ptr<Artist>>>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, &data::artistsDeque,
+   artistsWindow = make_shared<DequeListingWindow<shared_ptr<Artist>>>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, new deque<shared_ptr<Artist>>(data::artistsDeque),
 						   [](shared_ptr<Artist> artist)
 						   {
 						      startPlayback(artist, PLAYBACK_OPTION_SHUFFLE);
@@ -271,7 +271,8 @@ DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nl
 template< typename DequeType >
 DequeListingWindow<DequeType>::~DequeListingWindow()
 {
-   data->clear();
+   // data->clear();
+   delete data;
 }
 
 template< typename DequeType >

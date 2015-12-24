@@ -92,6 +92,7 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
       playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
       playback->join();
    }
+   delete playback;
    playback = new thread(playbackThread, playbackDeque, 0);
 }
 
@@ -110,6 +111,7 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
       playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
       playback->join();
    }
+   delete playback;
    playback = new thread(playbackThread, playbackDeque, 0);
 }
 
@@ -120,6 +122,7 @@ void startPlayback(shared_ptr<Track> track, uint_16 options)
       playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
       playback->join();
    }
+   delete playback;
    playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}), 0);
 }
 
