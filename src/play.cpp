@@ -25,8 +25,8 @@ void playTrack(shared_ptr<Track> track)
    NowPlaying::track = track;
    NowPlaying::frame = 0;
    
-   ao_device_wrapper device(ao_open_live(ao_default_driver_id(), track->sampleFormat, nullptr));
-   if (device.device == nullptr)
+   unique_ptr<ao_device, decltype(&ao_close)> device(ao_open_live(ao_default_driver_id(), track->sampleFormat, nullptr), ao_close);
+   if (device.get() == nullptr)
    {
       printf("Could not open device\n");
       exit(0);
@@ -36,34 +36,33 @@ void playTrack(shared_ptr<Track> track)
    while (!endOfStream)
    {
       processPlaybackCommand();
-
+      
       if (playbackPause)
       {
 	 usleep(1000);
 	 continue;
       }
       
-      AVPacket* packet = new AVPacket;
-      av_init_packet(packet);
-      if (av_read_frame(track->container, packet) < 0)
+      unique_ptr<AVPacket, void(*)(AVPacket*)> packet(new AVPacket,
+						      [](AVPacket* packet)
+						      {
+							 av_packet_unref(packet);
+							 av_free_packet(packet);
+							 delete packet;
+						      });
+      av_init_packet(packet.get());
+      if (av_read_frame(track->container, packet.get()) < 0)
       {
-	 delete packet;
 	 endOfStream = true;
 	 continue;
       }
       if (packet->stream_index != track->streamID)
       {
-	 av_packet_unref(packet);
-	 delete packet;
 	 //printf("Packet from invalid stream\n");
 	 continue;
       }
 
-      playPacket(packet, device, track);
-      
-      av_packet_unref(packet);
-      av_free_packet(packet);
-      delete packet;
+      playPacket(packet.get(), device.get(), track);     
    }
 
    playbackPause = false;
@@ -87,12 +86,7 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   if (NowPlaying::playing == true)
-   {
-      playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
-      playback->join();
-   }
-   delete playback;
+   endPlaybackIfRuns();
    playback = new thread(playbackThread, playbackDeque, 0);
 }
 
@@ -106,23 +100,13 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   if (NowPlaying::playing == true)
-   {
-      playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
-      playback->join();
-   }
-   delete playback;
+   endPlaybackIfRuns();
    playback = new thread(playbackThread, playbackDeque, 0);
 }
 
 void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
-   if (NowPlaying::playing == true)
-   {
-      playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
-      playback->join();
-   }
-   delete playback;
+   endPlaybackIfRuns();
    playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}), 0);
 }
 
@@ -140,6 +124,8 @@ void playbackThread(deque<shared_ptr<Track>>* tracksToPlay, uint_16 options)
 	 switch (e)
 	 {
 	    case PLAYBACK_COMMAND_STOP:
+	       playback->detach();
+	       playback = nullptr;
 	       goto end;
 	       break;
 	    case PLAYBACK_COMMAND_NEXT:
@@ -222,9 +208,26 @@ void processPlaybackCommand()
 
 void sendPlaybackCommand(Command* command)
 {
-   playbackControlMutex.lock();
-   playbackControl.push(unique_ptr<Command>(command));
-   playbackControlMutex.unlock();
+   // Do not add dublicated commands
+   //!!!: this might not be a very good idea
+   if (playbackControl.empty() ||
+       playbackControl.front()->commandID != command->commandID)
+   {
+      playbackControlMutex.lock();
+      playbackControl.push(unique_ptr<Command>(command));
+      playbackControlMutex.unlock();
+   }
+}
+
+void endPlaybackIfRuns()
+{
+   if (NowPlaying::playing == true)
+   {
+      sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+      playback->join();
+      delete playback;
+      playback = nullptr;
+   }
 }
 
 bool playbackInProcess()
@@ -237,20 +240,6 @@ Command::Command() {}
 
 Command::Command(char commandID) :
    commandID(commandID) {}
-
-
-ao_device_wrapper::ao_device_wrapper(ao_device* device) :
-   device(device) {}
-
-ao_device_wrapper::~ao_device_wrapper()
-{
-   ao_close(device);
-}
-
-ao_device_wrapper::operator ao_device*()
-{
-   return device;
-}
 
 
 void NowPlaying::reset()

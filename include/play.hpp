@@ -47,6 +47,7 @@ void playbackThread(std::deque<std::shared_ptr<Track> >* tracksToPlay, uint_16 o
 void playPacket(AVPacket* packet, ao_device* device, std::shared_ptr<Track> track);
 void processPlaybackCommand();
 void sendPlaybackCommand(Command* command);
+void endPlaybackIfRuns();
 bool playbackInProcess();
 
 struct Command
@@ -54,13 +55,4 @@ struct Command
    char commandID;
    Command();
    Command(char commandID);
-};
-
-struct ao_device_wrapper
-{
-   ao_device* device;
-
-   ao_device_wrapper(ao_device* device);
-   ~ao_device_wrapper();
-   operator ao_device*();
 };

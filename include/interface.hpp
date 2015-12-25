@@ -101,6 +101,7 @@ class PlaybackControlWindow : public Window
 {
 public:
    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
+   virtual ~PlaybackControlWindow()     override;
    virtual void update(bool isSelected) override;
    virtual void processKey(int ch)      override;
 

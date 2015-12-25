@@ -2,7 +2,6 @@
 #include "play.hpp"
 
 #include <unistd.h>
-#include <sys/select.h>
 
 using namespace std;
 using namespace interface;
@@ -21,6 +20,7 @@ shared_ptr<Window> interface::selectedWindow;
 void initInterface()
 {
    initscr();
+   halfdelay(10);
    curs_set(FALSE);
    noecho();
 
@@ -113,15 +113,7 @@ void fullRefresh()
 
 //returns false if pressed exit key
 bool readKey()
-{
-   timeval selectDelay;
-   selectDelay.tv_sec = 0;
-   selectDelay.tv_usec = 100000;
-   fd_set stdin;
-   FD_ZERO(&stdin);
-   FD_SET(0, &stdin);
-   select(1, &stdin, nullptr, nullptr, &selectDelay);
-   
+{ 
    int ch = wgetch(selectedWindow->window);
    switch (ch)
    {
@@ -167,7 +159,7 @@ Window::Window(int startY, int startX, int nlines, int ncols, char borders) :
    startY(startY), startX(startX), nlines(nlines), ncols(ncols)
 {
    window = newwin(nlines, ncols, startY, startX);
-   nodelay(window, true);
+   // nodelay(window, true);
    keypad(window, true);
 
    borderTop    = borders & BORDER_TOP;
@@ -374,6 +366,17 @@ TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int
 
 PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
    Window(startY, startX, nlines, ncols, borders), winThread(nullptr), forceStopThread(false) {}
+
+PlaybackControlWindow::~PlaybackControlWindow()
+{
+   if (winThread != nullptr && !playbackInProcess())
+   {
+      forceStopThread = true;
+      winThread->join();
+      delete winThread;
+      winThread = nullptr;
+   }
+}
 
 void PlaybackControlWindow::update(bool isSelected)
 {
