@@ -27,7 +27,7 @@ namespace play
    extern std::mutex playbackControlMutex;
    extern std::queue<std::unique_ptr<Command>> playbackControl;
    extern bool playbackPause;
-   extern std::thread* playback;
+   extern std::unique_ptr<std::thread, void(*)(std::thread*)> playback;
    
    namespace NowPlaying
    {

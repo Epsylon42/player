@@ -12,10 +12,19 @@ int               play::NowPlaying::frame = 0;
 bool              play::NowPlaying::playing = false;
 
 
-mutex                      play::playbackControlMutex;
-queue<unique_ptr<Command>> play::playbackControl;
-bool                       play::playbackPause = false;
-thread*                    play::playback = nullptr;
+mutex                                play::playbackControlMutex;
+queue<unique_ptr<Command>>           play::playbackControl;
+bool                                 play::playbackPause = false;
+unique_ptr<thread, void(*)(thread*)> play::playback(nullptr,
+						    [](thread* _thread)
+						    {
+						       if (playbackInProcess())
+						       {
+							  sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+							  _thread->join();
+						       }
+						       delete _thread;
+						    });
 
 
 void playTrack(shared_ptr<Track> track)
@@ -62,7 +71,7 @@ void playTrack(shared_ptr<Track> track)
 	 continue;
       }
 
-      playPacket(packet.get(), device.get(), track);     
+      playPacket(packet.get(), device.get(), track);
    }
 
    playbackPause = false;
@@ -73,7 +82,7 @@ void playTrack(shared_ptr<Track> track)
 
 void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 {
-   deque<shared_ptr<Track>>* playbackDeque = new deque<shared_ptr<Track>>;
+   unique_ptr<deque<shared_ptr<Track>>> playbackDeque(new deque<shared_ptr<Track>>);
    for (auto album : artist->albumsDeque)
    {
       if (album != artist->albumsMap["all"])
@@ -86,28 +95,37 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   endPlaybackIfRuns();
-   playback = new thread(playbackThread, playbackDeque, 0);
+   playback.reset();
+   if (playbackDeque->empty())
+   {
+      return;
+   }
+   //TODO: rewrite playbackThread to use `unique_ptr`
+   playback.reset(new thread(playbackThread, playbackDeque.release(), 0));
 }
 
 void startPlayback(shared_ptr<Album> album, uint_16 options)
 {
-   deque<shared_ptr<Track>>* playbackDeque = new deque<shared_ptr<Track>>;
-   playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end()); 
+   unique_ptr<deque<shared_ptr<Track>>> playbackDeque(new deque<shared_ptr<Track>>);
+   playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end());
    
    if (options & PLAYBACK_OPTION_SHUFFLE)
    {
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   endPlaybackIfRuns();
-   playback = new thread(playbackThread, playbackDeque, 0);
+   playback.reset();
+   if (playbackDeque->empty())
+   {
+      return;
+   }
+   playback.reset(new thread(playbackThread, playbackDeque.release(), 0));
 }
 
 void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
-   endPlaybackIfRuns();
-   playback = new thread(playbackThread, new deque<shared_ptr<Track>>({track}), 0);
+   playback.reset();
+   playback.reset(new thread(playbackThread, new deque<shared_ptr<Track>>({track}), options));
 }
 
 void playbackThread(deque<shared_ptr<Track>>* tracksToPlay, uint_16 options)
@@ -124,8 +142,6 @@ void playbackThread(deque<shared_ptr<Track>>* tracksToPlay, uint_16 options)
 	 switch (e)
 	 {
 	    case PLAYBACK_COMMAND_STOP:
-	       playback->detach();
-	       playback = nullptr;
 	       goto end;
 	       break;
 	    case PLAYBACK_COMMAND_NEXT:
@@ -216,17 +232,6 @@ void sendPlaybackCommand(Command* command)
       playbackControlMutex.lock();
       playbackControl.push(unique_ptr<Command>(command));
       playbackControlMutex.unlock();
-   }
-}
-
-void endPlaybackIfRuns()
-{
-   if (NowPlaying::playing == true)
-   {
-      sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
-      playback->join();
-      delete playback;
-      playback = nullptr;
    }
 }
 

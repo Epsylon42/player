@@ -47,8 +47,9 @@ int main(int argc, char* argv[])
    sortLibrary();
 
    interfaceLoop();
-   endPlaybackIfRuns();
    
+   play::playback.reset();
+
    data::artistsDeque.clear();
    data::artistsMap.clear();
    
