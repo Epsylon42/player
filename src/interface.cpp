@@ -365,34 +365,19 @@ TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int
 
 
 PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
-   Window(startY, startX, nlines, ncols, borders), winThread(nullptr), forceStopThread(false) {}
+   Window(startY, startX, nlines, ncols, borders),
+   stopThread(false),
+   winThread(new thread(playbackWindowThread, this)) {}
 
 PlaybackControlWindow::~PlaybackControlWindow()
 {
-   if (winThread != nullptr && !playbackInProcess())
-   {
-      forceStopThread = true;
-      winThread->join();
-      delete winThread;
-      winThread = nullptr;
-   }
+   stopThread = true;
+   winThread->join();
+   delete winThread;
 }
 
 void PlaybackControlWindow::update(bool isSelected)
 {
-   if (winThread == nullptr && playbackInProcess())
-   {
-      forceStopThread = false;
-      winThread = new thread(playbackWindowThread, this);
-   }
-   else if (winThread != nullptr && !playbackInProcess())
-   {
-      forceStopThread = true;
-      winThread->join();
-      delete winThread;
-      winThread = nullptr;
-   }
-   
    Window::update(isSelected);
 }
 
@@ -429,15 +414,19 @@ void PlaybackControlWindow::rewindBackward()
 void playbackWindowThread(PlaybackControlWindow* win)
 {
    WINDOW* window = win->window;
-   while (!win->forceStopThread)
+   while(!win->stopThread)
    {
       for (int i = 1; i < win->nlines-1; i++)
       {
+	 // interfaceMutex.lock();
 	 wmove(window, i, 1);
 	 wclrtoeol(window);
+	 // interfaceMutex.unlock();
       }
+      
       if (playbackInProcess() && play::NowPlaying::track)
       {
+	 // interfaceMutex.lock();
 	 wmove(window, 1, 1);
 	 wattron(window, A_BOLD);
 	 wprintw(window, "Track: ");
@@ -458,9 +447,13 @@ void playbackWindowThread(PlaybackControlWindow* win)
 	 wattroff(window, A_BOLD);
 	 int time = play::NowPlaying::frame;
 	 wprintw(window, "%d", time);
+	 // interfaceMutex.unlock();
+	 win->Window::update(false);
+	 usleep(10000);
       }
-
-      win->Window::update(false);
-      usleep(50000);
+      else
+      {
+	 usleep(500000);
+      }
    }
 }

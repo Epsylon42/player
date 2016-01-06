@@ -99,6 +99,7 @@ class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
 
 class PlaybackControlWindow : public Window
 {
+   friend void playbackWindowThread(PlaybackControlWindow* win);
 public:
    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
    virtual ~PlaybackControlWindow()     override;
@@ -106,12 +107,11 @@ public:
    virtual void processKey(int ch)      override;
 
 protected:
-   friend void playbackWindowThread(PlaybackControlWindow* win);
    virtual void afterReshape()          override;
    void rewindForward();
    void rewindBackward();
 
-   bool forceStopThread;
+   bool stopThread;
    std::thread* winThread;
 };
 

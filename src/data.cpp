@@ -207,7 +207,6 @@ deque<shared_ptr<Track> >* Album::getTracks()
 void Album::addTrack(shared_ptr<Track> track)
 {
    if (tracksMap.find(track->name) != tracksMap.end())
-      // if (find(tracksMap.begin(), tracksMap.end(), track->name) != tracksMap.end())
    {
       track->name = track->name + "_";
       addTrack(track);

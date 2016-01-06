@@ -15,17 +15,20 @@ bool              play::NowPlaying::playing = false;
 mutex                                play::playbackControlMutex;
 queue<unique_ptr<Command>>           play::playbackControl;
 bool                                 play::playbackPause = false;
-unique_ptr<thread, void(*)(thread*)> play::playback(nullptr,
-						    [](thread* _thread)
-						    {
-						       if (playbackInProcess())
-						       {
-							  sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
-							  _thread->join();
-						       }
-						       delete _thread;
-						    });
+unique_ptr<thread> play::playback(nullptr);
 
+
+void initPlay()
+{
+   playback.reset(new thread(playbackThread));
+}
+
+void endPlay()
+{
+   sendPlaybackCommand(new Command(PLAYBACK_COMMAND_EXIT));
+   playback->join();
+   playback.reset();
+}
 
 void playTrack(shared_ptr<Track> track)
 {
@@ -76,7 +79,6 @@ void playTrack(shared_ptr<Track> track)
 
    playbackPause = false;
    track->close();
-   usleep(1000000);
    NowPlaying::reset();
 }
 
@@ -95,13 +97,12 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   playback.reset();
    if (playbackDeque->empty())
    {
       return;
    }
-   //TODO: rewrite playbackThread to use `unique_ptr`
-   playback.reset(new thread(playbackThread, playbackDeque.release(), 0));
+   sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+   sendPlaybackCommand(new PlayCommand(move(playbackDeque), 0));
 }
 
 void startPlayback(shared_ptr<Album> album, uint_16 options)
@@ -114,59 +115,97 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
       random_shuffle(playbackDeque->begin(), playbackDeque->end());
    }
 
-   playback.reset();
    if (playbackDeque->empty())
    {
       return;
    }
-   playback.reset(new thread(playbackThread, playbackDeque.release(), 0));
+   sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+   sendPlaybackCommand(new PlayCommand(move(playbackDeque), 0));
 }
 
 void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
-   playback.reset();
-   playback.reset(new thread(playbackThread, new deque<shared_ptr<Track>>({track}), options));
+   auto initList = {track};
+   sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+   sendPlaybackCommand(new PlayCommand(make_unique<deque<shared_ptr<Track>>>(initList), 0));
 }
 
-void playbackThread(deque<shared_ptr<Track>>* tracksToPlay, uint_16 options)
+unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
 {
-   NowPlaying::playing = true;
-   for (auto track = tracksToPlay->begin(); track != tracksToPlay->end();)
+   while (true)
    {
-      try
+      while (!playbackControl.empty())
       {
-	 playTrack(*track);
-      }
-      catch (char e)
-      {
-	 switch (e)
+	 playbackControlMutex.lock();
+	 unique_ptr<Command> command = move(playbackControl.front());
+	 playbackControl.pop();
+	 playbackControlMutex.unlock();
+	 
+	 unique_ptr<PlayCommand> playCommand;
+	 switch (command->commandID)
 	 {
-	    case PLAYBACK_COMMAND_STOP:
-	       goto end;
-	       break;
-	    case PLAYBACK_COMMAND_NEXT:
-	       track++;
-	       continue;
-	       break;
-	    case PLAYBACK_COMMAND_PREV:
-	       if (track != tracksToPlay->begin())
-	       {
-		  track--;
-		  continue;
-	       }
-	       break;
+	    case PLAYBACK_COMMAND_PLAY: //TODO: provide reliable way to make sure command is actually PlayCommand in this case
+	       playCommand.reset(dynamic_cast<PlayCommand*>(command.release()));
+	       return move(playCommand->tracks);
+	    case PLAYBACK_COMMAND_EXIT:
+	       return nullptr;
 	    default:
 	       break;
 	 }
       }
-      track++; //TODO: move this back to the cycle definition(?) if this is possible wihout even more (in/de)crements
+      usleep(500000);
+   }
+}
+
+void playbackThread()
+{
+   while (true)
+   {
+      auto tracks = playbackThreadWait();
+      if (tracks == nullptr) // caught PLAYBACK_COMMAND_EXIT command
+      {
+	 goto end;
+      }
+      
+      playbackPause = false;
+      NowPlaying::playing = true;
+      for (auto track = tracks->begin(); track != tracks->end();)
+      {
+	 try
+	 {
+	    playTrack(*track);
+	 }
+	 catch (uint_8 e)
+	 {
+	    switch (e)
+	    {
+	       case PLAYBACK_COMMAND_STOP:
+		  goto iterationEnd;
+	       case PLAYBACK_COMMAND_NEXT:
+		  track++;
+		  continue;
+	       case PLAYBACK_COMMAND_PREV:
+		  if (track != tracks->begin())
+		  {
+		     track--;
+		     continue;
+		  }
+		  break;
+	       case PLAYBACK_COMMAND_EXIT:
+		  goto end;
+	       default:
+		  exit(0); //this should not happen
+	    }
+	 }
+	 track++; //TODO: move this back to the cycle definition(?) if this is possible wihout even more (in/de)crements
+      }
+     iterationEnd:;
+      NowPlaying::playing = false;
+      NowPlaying::reset();
    }
   end:;
-   tracksToPlay->clear();
-   delete tracksToPlay;
-   playbackPause = false;
-   NowPlaying::reset();
    NowPlaying::playing = false;
+   NowPlaying::reset();
 }
 
 void playPacket(AVPacket* packet, ao_device* device, shared_ptr<Track> track)
@@ -245,6 +284,12 @@ Command::Command() {}
 
 Command::Command(char commandID) :
    commandID(commandID) {}
+
+Command::~Command() {}
+
+
+PlayCommand::PlayCommand(unique_ptr<deque<shared_ptr<Track>>>&& tracks, uint_16 options) :
+   Command(PLAYBACK_COMMAND_PLAY), tracks(move(tracks)), options(options) {}
 
 
 void NowPlaying::reset()
