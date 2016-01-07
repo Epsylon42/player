@@ -373,7 +373,6 @@ PlaybackControlWindow::~PlaybackControlWindow()
 {
    stopThread = true;
    winThread->join();
-   delete winThread;
 }
 
 void PlaybackControlWindow::update(bool isSelected)

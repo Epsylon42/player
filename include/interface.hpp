@@ -50,14 +50,17 @@ public:
    int nlines;
    int ncols;
    WINDOW* window;
-   Window* selectedSubWindow;
-   std::deque<Window*> subWindows;
-   
+   std::deque<std::shared_ptr<Window>> subWindows;
+   std::shared_ptr<Window> selectedSubWindow;
+      
    Window(int startY, int startX, int nlines, int ncols, char borders);
+   
    void reshapeWindow(int newY, int newX, int newLines, int newColumns);
-   virtual ~Window();
+
    virtual void update(bool isSelected);
    virtual void processKey(int ch) = 0;
+   
+   virtual ~Window();
 
 protected:
    bool borderTop;
@@ -66,8 +69,11 @@ protected:
    bool borderBottom;
 
    void displayBorders();
+   
    virtual void afterReshape() = 0;
 };
+
+
 
 // DequeType !MUST! be of std::deque<something> type
 template< typename DequeType > 
@@ -77,10 +83,13 @@ public:
    typename std::deque<DequeType>::iterator cursorPos;
  
    DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* data, void (*allocate)(DequeType), void (*select)(DequeType));
-   virtual ~DequeListingWindow()        override;
+
+   void assignNewDeque(std::deque<DequeType>* newDeque);
+   
    virtual void update(bool isSelected) override;
    virtual void processKey(int ch)      override;
-   void assignNewDeque(std::deque<DequeType>* newDeque);
+
+   virtual ~DequeListingWindow()        override;
 
 protected:
    std::deque<DequeType>* data;
@@ -88,8 +97,11 @@ protected:
 
    void (*allocate)(DequeType);
    void (*select)(DequeType);
+   
    virtual void afterReshape()          override;
 };
+
+
 
 class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
 {
@@ -97,22 +109,27 @@ class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
    TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>>* data);
 };
 
+
+
 class PlaybackControlWindow : public Window
 {
    friend void playbackWindowThread(PlaybackControlWindow* win);
 public:
    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
-   virtual ~PlaybackControlWindow()     override;
+
    virtual void update(bool isSelected) override;
    virtual void processKey(int ch)      override;
 
+   virtual ~PlaybackControlWindow()     override;
+
 protected:
-   virtual void afterReshape()          override;
+   bool stopThread;
+   std::unique_ptr<std::thread> winThread;
+
    void rewindForward();
    void rewindBackward();
-
-   bool stopThread;
-   std::thread* winThread;
+   
+   virtual void afterReshape()          override;
 };
 
 void playbackWindowThread(PlaybackControlWindow* win);

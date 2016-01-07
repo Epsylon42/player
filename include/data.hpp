@@ -35,7 +35,7 @@ struct Track
    std::string       filePath;
    AVFormatContext*  container;
    AVCodecContext*   codecContext;
-   AVCodec* codec;
+   AVCodec*          codec;
    ao_sample_format* sampleFormat;
    int               streamID;
 
@@ -44,12 +44,16 @@ struct Track
    std::string albumName;
 
    Track(const std::string& file);
-   ~Track();
+   
    void open();
    void close();
    void decodeMetadata();
    void testPrint();
+
+   ~Track();
 };
+
+
 
 struct Album
 {
@@ -59,11 +63,15 @@ struct Album
    std::deque<std::shared_ptr<Track>>            tracksDeque;
 
    Album(const std::string& name);
-   ~Album();
+
    std::deque<std::shared_ptr<Track>>* getTracks();
    void addTrack(std::shared_ptr<Track> track);
    void testPrint();
+
+   ~Album();
 };
+
+
 
 struct Artist
 {
@@ -73,9 +81,11 @@ struct Artist
    std::deque<std::shared_ptr<Album>>            albumsDeque;
 
    Artist(const std::string& name);
-   ~Artist();
+
    std::deque<std::shared_ptr<Album>>* getAlbums();
    void addAlbum(std::shared_ptr<Album> album);
    void addTrack(std::shared_ptr<Track> track);
    void testPrint();
+
+   ~Artist();
 };
