@@ -24,7 +24,7 @@ class PlaybackControlWindow;
 
 namespace interface
 {
-   extern std::mutex interfaceMutex;
+   extern std::recursive_mutex interfaceMutex;
    extern int sizeX;
    extern int sizeY;
    extern std::deque<std::shared_ptr<Window>> windows;
@@ -49,7 +49,7 @@ public:
    int startY;
    int nlines;
    int ncols;
-   WINDOW* window;
+   std::unique_ptr<WINDOW> window;
    std::deque<std::shared_ptr<Window>> subWindows;
    std::shared_ptr<Window> selectedSubWindow;
       

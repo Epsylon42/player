@@ -1,12 +1,14 @@
 #include "interface.hpp"
 #include "play.hpp"
 
+#include "ncurses_wrapper.hpp"
+
 #include <unistd.h>
 
 using namespace std;
 using namespace interface;
 
-mutex interface::interfaceMutex;
+recursive_mutex interface::interfaceMutex;
 int interface::sizeX;
 int interface::sizeY;
 deque<shared_ptr<Window> > interface::windows;
@@ -114,7 +116,7 @@ void fullRefresh()
 //returns false if pressed exit key
 bool readKey()
 { 
-   int ch = wgetch(selectedWindow->window);
+   int ch = wgetch(selectedWindow->window.get());
    switch (ch)
    {
       case ERR:
@@ -158,9 +160,9 @@ bool readKey()
 Window::Window(int startY, int startX, int nlines, int ncols, char borders) :
    startY(startY), startX(startX), nlines(nlines), ncols(ncols)
 {
-   window = newwin(nlines, ncols, startY, startX);
+   window.reset(newwin(nlines, ncols, startY, startX));
    // nodelay(window, true);
-   keypad(window, true);
+   keypad(window.get(), true);
 
    borderTop    = borders & BORDER_TOP;
    borderLeft   = borders & BORDER_LEFT;
@@ -170,7 +172,7 @@ Window::Window(int startY, int startX, int nlines, int ncols, char borders) :
 
 Window::~Window()
 {
-   delwin(window);
+   delwin(window.release());
 }
 
 void Window::displayBorders()
@@ -412,7 +414,7 @@ void PlaybackControlWindow::rewindBackward()
 
 void playbackWindowThread(PlaybackControlWindow* win)
 {
-   WINDOW* window = win->window;
+   unique_ptr<WINDOW>& window = win->window;
    while(!win->stopThread)
    {
       for (int i = 1; i < win->nlines-1; i++)
