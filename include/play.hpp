@@ -27,6 +27,16 @@ struct ao_device_wrapper;
 namespace play
 {
    extern std::mutex playbackControlMutex;
+
+   /*
+     commands are processed in two functions: 
+     playbackThreadWait() and processPlaybackCommand()
+
+     playbackThreadWait() processes everything in place, when
+     processPlaybackCommand() can throw commandID (mainly of commands
+     that stop current playback) so that it could be processed by
+     upper(?) function, which is playbackThread()
+    */
    extern std::queue<std::unique_ptr<Command>> playbackControl;
    extern bool playbackPause;
    extern std::unique_ptr<std::thread> playback;

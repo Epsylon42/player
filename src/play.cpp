@@ -101,7 +101,7 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
    {
       return;
    }
-   sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+
    sendPlaybackCommand(new PlayCommand(move(playbackDeque), 0));
 }
 
@@ -119,14 +119,14 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
    {
       return;
    }
-   sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+
    sendPlaybackCommand(new PlayCommand(move(playbackDeque), 0));
 }
 
 void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
    auto initList = {track};
-   sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+
    sendPlaybackCommand(new PlayCommand(make_unique<deque<shared_ptr<Track>>>(initList), 0));
 }
 
@@ -269,6 +269,14 @@ void sendPlaybackCommand(Command* command)
        playbackControl.front()->commandID != command->commandID)
    {
       playbackControlMutex.lock();
+      switch (command->commandID) // process special cases
+      {
+	 case PLAYBACK_COMMAND_PLAY:
+	    playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
+	    break;
+	 default:
+	    break;
+      }
       playbackControl.push(unique_ptr<Command>(command));
       playbackControlMutex.unlock();
    }
