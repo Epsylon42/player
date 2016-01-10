@@ -169,7 +169,7 @@ void playbackThread()
       
       playbackPause = false;
       NowPlaying::playing = true;
-      for (auto track = tracks->begin(); track != tracks->end();)
+      for (auto track = tracks->begin(); track != tracks->end() && NowPlaying::playing;)
       {
 	 try
 	 {
@@ -180,11 +180,13 @@ void playbackThread()
 	    switch (e)
 	    {
 	       case PLAYBACK_COMMAND_STOP:
-		  goto iterationEnd;
+		  NowPlaying::playing = false;
+		  break;
 	       case PLAYBACK_COMMAND_NEXT:
 		  track++;
 		  continue;
 	       case PLAYBACK_COMMAND_PREV:
+		  //FIXME: this switches between two first tracks
 		  if (track != tracks->begin())
 		  {
 		     track--;
@@ -199,11 +201,9 @@ void playbackThread()
 	 }
 	 track++; //TODO: move this back to the cycle definition(?) if this is possible wihout even more (in/de)crements
       }
-     iterationEnd:;
-      NowPlaying::playing = false;
       NowPlaying::reset();
    }
-  end:;
+  end:
    NowPlaying::playing = false;
    NowPlaying::reset();
 }
