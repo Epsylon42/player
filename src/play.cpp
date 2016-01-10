@@ -130,6 +130,11 @@ void startPlayback(shared_ptr<Track> track, uint_16 options)
    sendPlaybackCommand(new PlayCommand(make_unique<deque<shared_ptr<Track>>>(initList), 0));
 }
 
+void startPlayback(shared_ptr<Playlist> playlist, uint_16 options)
+{
+   sendPlaybackCommand(new PlayCommand(make_unique<deque<shared_ptr<Track>>>(playlist->getList()), 0));
+}
+
 unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
 {
    while (true)

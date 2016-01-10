@@ -8,7 +8,7 @@
     (ede-proj-target-makefile-program "player"
       :name "player"
       :path ""
-      :source '("data.cpp" "main.cpp" "play.cpp" "decode.cpp" "interface.cpp")
+      :source '("data.cpp" "main.cpp" "play.cpp" "decode.cpp" "interface.cpp" "playlist.cpp")
       :configuration-variables nil
       :ldlibs '("ncurses" "avcodec" "avformat" "avutil" "ao")))
   :makefile-type 'Makefile.am

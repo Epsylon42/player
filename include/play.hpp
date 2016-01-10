@@ -2,6 +2,7 @@
 
 #include "data.hpp"
 #include "decode.hpp"
+#include "playlist.hpp"
 
 #include <ao/ao.h>
 #include <queue>
@@ -57,6 +58,7 @@ void playTrack(std::shared_ptr<Track> track);
 void startPlayback(std::shared_ptr<Artist> artist, uint_16 options = 0);
 void startPlayback(std::shared_ptr<Album> album, uint_16 options = 0);
 void startPlayback(std::shared_ptr<Track> track, uint_16 options = 0);
+void startPlayback(std::shared_ptr<Playlist> playlist, uint_16 options = 0);
 std::unique_ptr<std::deque<std::shared_ptr<Track>>> playbackThreadWait();
 void playbackThread();
 void playPacket(AVPacket* packet, ao_device* device, std::shared_ptr<Track> track);
