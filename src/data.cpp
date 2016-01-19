@@ -40,11 +40,11 @@ void addTrack(shared_ptr<Track> track)
 deque<shared_ptr<Track> >* getTracks()
 {
    deque<shared_ptr<Track> >* tracks = new deque<shared_ptr<Track> >;
-   for (auto artist : artistsDeque)
+   for (auto artist = artistsDeque.begin()+1; artist != artistsDeque.end(); artist++)
    {
-      for (auto album : artist->albumsDeque)
+      for (auto album = (*artist)->albumsDeque.begin()+1; album != (*artist)->albumsDeque.end(); album++)
       {
-	 tracks->insert(tracks->end(), album->tracksDeque.begin(), album->tracksDeque.end());
+	 tracks->insert(tracks->end(), (*album)->tracksDeque.begin(), (*album)->tracksDeque.end());
       }
    }
    
