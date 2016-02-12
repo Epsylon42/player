@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <memory>
+#include <iterator>
 
 using namespace std;
 using namespace play;
@@ -84,20 +85,20 @@ void playTrack(shared_ptr<Track> track)
 
 void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 {
-   unique_ptr<deque<shared_ptr<Track>>> playbackDeque(new deque<shared_ptr<Track>>);
+   deque<shared_ptr<Track>> playbackDeque;
    for (auto album : artist->albumsDeque)
    {
       if (album != artist->albumsMap["all"])
       {
-	 playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end());
+	 playbackDeque.insert(playbackDeque.end(), album->tracksDeque.begin(), album->tracksDeque.end());
       }
    }
    if (options & PLAYBACK_OPTION_SHUFFLE)
    {
-      random_shuffle(playbackDeque->begin(), playbackDeque->end());
+      random_shuffle(playbackDeque.begin(), playbackDeque.end());
    }
 
-   if (playbackDeque->empty())
+   if (playbackDeque.empty())
    {
       return;
    }
@@ -107,15 +108,16 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 
 void startPlayback(shared_ptr<Album> album, uint_16 options)
 {
-   unique_ptr<deque<shared_ptr<Track>>> playbackDeque(new deque<shared_ptr<Track>>);
-   playbackDeque->insert(playbackDeque->end(), album->tracksDeque.begin(), album->tracksDeque.end());
+   deque<shared_ptr<Track>> playbackDeque;
+   
+   playbackDeque.insert(playbackDeque.end(), album->tracksDeque.begin(), album->tracksDeque.end());
    
    if (options & PLAYBACK_OPTION_SHUFFLE)
    {
-      random_shuffle(playbackDeque->begin(), playbackDeque->end());
+      random_shuffle(playbackDeque.begin(), playbackDeque.end());
    }
 
-   if (playbackDeque->empty())
+   if (playbackDeque.empty())
    {
       return;
    }
@@ -125,14 +127,12 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
 
 void startPlayback(shared_ptr<Track> track, uint_16 options)
 {
-   auto initList = {track};
-
-   sendPlaybackCommand(new PlayCommand(make_unique<deque<shared_ptr<Track>>>(initList), 0));
+   sendPlaybackCommand(new PlayCommand(deque<shared_ptr<Track>>({track}), 0));
 }
 
 void startPlayback(shared_ptr<Playlist> playlist, uint_16 options)
 {
-   sendPlaybackCommand(new PlayCommand(make_unique<deque<shared_ptr<Track>>>(playlist->getList()), 0));
+   sendPlaybackCommand(new PlayCommand(deque<shared_ptr<Track>>(playlist->getList()), 0));
 }
 
 unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
@@ -180,7 +180,7 @@ void playbackThread()
 	 {
 	    playTrack(*track);
 	 }
-	 catch (uint_8 e)
+	 catch (uint_8& e)
 	 {
 	    switch (e)
 	    {
@@ -301,8 +301,10 @@ Command::Command(char commandID) :
 Command::~Command() {}
 
 
-PlayCommand::PlayCommand(unique_ptr<deque<shared_ptr<Track>>>&& tracks, uint_16 options) :
-   Command(PLAYBACK_COMMAND_PLAY), tracks(move(tracks)), options(options) {}
+PlayCommand::PlayCommand(deque<shared_ptr<Track>> tracks, uint_16 options) :
+   Command(PLAYBACK_COMMAND_PLAY),
+   tracks(make_unique<decltype(tracks)>(tracks.begin(), tracks.end())),
+   options(options) {}
 
 
 void NowPlaying::reset()

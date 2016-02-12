@@ -78,5 +78,5 @@ struct PlayCommand : Command
 {
    std::unique_ptr<std::deque<std::shared_ptr<Track>>> tracks;
    uint_16 options;
-   PlayCommand(std::unique_ptr<std::deque<std::shared_ptr<Track>>>&& tracks, uint_16 options);
+   PlayCommand(std::deque<std::shared_ptr<Track>> tracks, uint_16 options);
 };

@@ -12,10 +12,10 @@ recursive_mutex interface::interfaceMutex;
 int interface::sizeX;
 int interface::sizeY;
 deque<shared_ptr<Window> > interface::windows;
-shared_ptr<DequeListingWindow<shared_ptr<Artist>>> interface::artistsWindow;
-shared_ptr<DequeListingWindow<shared_ptr<Album>>>  interface::albumsWindow;
-shared_ptr<TracksListingWindow>                    interface::tracksWindow;
-shared_ptr<PlaybackControlWindow>                  interface::playbackWindow;
+shared_ptr<ArtistsListingWindow>  interface::artistsWindow;
+shared_ptr<AlbumsListingWindow>   interface::albumsWindow;
+shared_ptr<TracksListingWindow>   interface::tracksWindow;
+shared_ptr<PlaybackControlWindow> interface::playbackWindow;
 shared_ptr<Window> interface::selectedWindow;
 
 
@@ -29,26 +29,9 @@ void initInterface()
    sizeX = getmaxx(stdscr);
    sizeY = getmaxy(stdscr);
 
-   
    tracksWindow = make_shared<TracksListingWindow>(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks());
-   albumsWindow = make_shared<DequeListingWindow<shared_ptr<Album>>>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums(),
-						 [](shared_ptr<Album> album)
-						 {
-						    startPlayback(album, PLAYBACK_OPTION_SHUFFLE);
-						 },
-						 [](shared_ptr<Album> album)
-						 {
-						    tracksWindow->assignNewDeque(album->getTracks());
-						 });
-   artistsWindow = make_shared<DequeListingWindow<shared_ptr<Artist>>>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, new deque<shared_ptr<Artist>>(data::artistsDeque),
-						   [](shared_ptr<Artist> artist)
-						   {
-						      startPlayback(artist, PLAYBACK_OPTION_SHUFFLE);
-						   },
-						   [](shared_ptr<Artist> artist)
-						   {
-						      albumsWindow->assignNewDeque(artist->getAlbums());
-						   });
+   albumsWindow = make_shared<AlbumsListingWindow>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums());
+   artistsWindow = make_shared<ArtistsListingWindow>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, new deque<shared_ptr<Artist>>(data::artistsDeque));
    playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 5, sizeX/2, BORDERS_ALL);
    
    selectedWindow =  tracksWindow;
@@ -248,18 +231,11 @@ void DequeListingWindow<DequeType>::afterReshape()
 }
 
 template< typename DequeType >
-DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders,
-						  deque<DequeType>* data,
-						  void (*select)(DequeType),
-						  void (*allocate)(DequeType)) :
-   Window(startY, startX, nlines, ncols, borders), data(data), select(select), allocate(allocate)
+DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType>* data) :
+   Window(startY, startX, nlines, ncols, borders), data(data)
 {
    cursorPos   = data->begin();
    screenStart = data->begin();
-   if (allocate != nullptr)
-   {
-      (allocate)(*cursorPos);
-   }
 }
 
 template< typename DequeType >
@@ -310,10 +286,7 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 	       screenStart--;
 	    }
 	    cursorPos--;
-	    if (allocate != nullptr)
-	    {
-	       (allocate)(*cursorPos);
-	    }
+	    select();
 	 }
 	 break;
       case KEY_DOWN:
@@ -324,17 +297,12 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 	       screenStart++;
 	    }
 	    cursorPos++;
-	    if (allocate != nullptr)
-	    {
-	       (allocate)(*cursorPos);
-	    }
+	    select();
 	 }
 	 break;
       case 'S':
-	 if (select != nullptr)
-	 {
-	    (select)(*cursorPos);
-	 }
+	 press();
+	 break;
       default:
 	 break;
    }
@@ -349,22 +317,60 @@ void DequeListingWindow<DequeType>::assignNewDeque(deque<DequeType>* newDeque)
    data = newDeque;
    cursorPos   = data->begin();
    screenStart = data->begin();
-   if (allocate != nullptr)
-   {
-      (allocate)(*cursorPos);
-   }
+
+   select();
    
    wclear(window);
    update(false);
 }
 
+TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>>* data) :
+   DequeListingWindow(startY, startX, nlines, ncols, borders, data)
+{
+   select();
+}
 
-TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<shared_ptr<Track> >* data) :
-   DequeListingWindow<shared_ptr<Track>>(startY, startX, nlines, ncols, borders, data, [](shared_ptr<Track> track)
-			      {
-				 startPlayback(track);
-			      }, nullptr) {}
+void TracksListingWindow::select()
+{
+   
+}
 
+void TracksListingWindow::press()
+{
+   startPlayback(*cursorPos, 0);
+}
+
+AlbumsListingWindow::AlbumsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Album>>* data) :
+   DequeListingWindow(startY, startX, nlines, ncols, borders, data)
+{
+   select();
+}
+
+void AlbumsListingWindow::select()
+{
+   tracksWindow->assignNewDeque((*cursorPos)->getTracks());
+}
+
+void AlbumsListingWindow::press()
+{
+   startPlayback(*cursorPos, PLAYBACK_OPTION_SHUFFLE);
+}
+
+ArtistsListingWindow::ArtistsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Artist>>* data) :
+   DequeListingWindow(startY, startX, nlines, ncols, borders, data)
+{
+   select();
+}
+
+void ArtistsListingWindow::select()
+{
+   albumsWindow->assignNewDeque((*cursorPos)->getAlbums());
+}
+
+void ArtistsListingWindow::press()
+{
+   startPlayback(*cursorPos, PLAYBACK_OPTION_SHUFFLE);
+}
 
 PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
    Window(startY, startX, nlines, ncols, borders),
