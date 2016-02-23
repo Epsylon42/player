@@ -84,9 +84,9 @@ class DequeListingWindow : public Window
 public:
    typename std::deque<DequeType>::iterator cursorPos;
  
-   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType>* data);
+   DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType> data);
 
-   void assignNewDeque(std::deque<DequeType>* newDeque);
+   void assignNewDeque(std::deque<DequeType> newDeque);
    
    virtual void update(bool isSelected) override;
    virtual void processKey(int ch)      override;
@@ -94,7 +94,7 @@ public:
    virtual ~DequeListingWindow()        override;
 
 protected:
-   std::deque<DequeType>* data;
+   std::deque<DequeType> data;
    typename std::deque<DequeType>::iterator screenStart;
 
    virtual void select() = 0;
@@ -111,7 +111,7 @@ protected:
 class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
 {
   public:
-   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>>* data);
+   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>> data);
 
   protected:
    virtual void select() override;
@@ -121,7 +121,7 @@ class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
 class AlbumsListingWindow : public DequeListingWindow<std::shared_ptr<Album>>
 {
   public:
-   AlbumsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Album>>* data);
+   AlbumsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Album>> data);
 
   protected:
    virtual void select() override;
@@ -131,7 +131,7 @@ class AlbumsListingWindow : public DequeListingWindow<std::shared_ptr<Album>>
 class ArtistsListingWindow : public DequeListingWindow<std::shared_ptr<Artist>>
 {
   public:
-   ArtistsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Artist>>* data);
+   ArtistsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Artist>> data);
 
   protected:
    virtual void select() override;

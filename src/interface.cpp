@@ -4,6 +4,7 @@
 #include "ncurses_wrapper.hpp"
 
 #include <unistd.h>
+#include <iostream>
 
 using namespace std;
 using namespace interface;
@@ -11,7 +12,7 @@ using namespace interface;
 recursive_mutex interface::interfaceMutex;
 int interface::sizeX;
 int interface::sizeY;
-deque<shared_ptr<Window> > interface::windows;
+deque<shared_ptr<Window>> interface::windows;
 shared_ptr<ArtistsListingWindow>  interface::artistsWindow;
 shared_ptr<AlbumsListingWindow>   interface::albumsWindow;
 shared_ptr<TracksListingWindow>   interface::tracksWindow;
@@ -31,7 +32,7 @@ void initInterface()
 
    tracksWindow = make_shared<TracksListingWindow>(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks());
    albumsWindow = make_shared<AlbumsListingWindow>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums());
-   artistsWindow = make_shared<ArtistsListingWindow>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, new deque<shared_ptr<Artist>>(data::artistsDeque));
+   artistsWindow = make_shared<ArtistsListingWindow>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, data::artistsDeque);
    playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 5, sizeX/2, BORDERS_ALL);
    
    selectedWindow =  tracksWindow;
@@ -231,18 +232,18 @@ void DequeListingWindow<DequeType>::afterReshape()
 }
 
 template< typename DequeType >
-DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType>* data) :
+DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType> data) :
    Window(startY, startX, nlines, ncols, borders), data(data)
 {
-   cursorPos   = data->begin();
-   screenStart = data->begin();
+   cursorPos   = this->data.begin();
+   screenStart = this->data.begin();
 }
 
 template< typename DequeType >
 DequeListingWindow<DequeType>::~DequeListingWindow()
 {
-   // data->clear();
-   delete data;
+   data.clear();
+   // delete data;
 }
 
 template< typename DequeType >
@@ -251,7 +252,7 @@ void DequeListingWindow<DequeType>::update(bool isSelected)
    auto p = screenStart;
    for (int i = 0; i < nlines-2; i++)
    {
-      if (p == data->end())
+      if (p == data.end())
       {
 	 break;
       }
@@ -279,7 +280,7 @@ void DequeListingWindow<DequeType>::processKey(int ch)
    switch (ch)
    {
       case KEY_UP:
-	 if (cursorPos != data->begin())
+	 if (cursorPos != data.begin())
 	 {
 	    if (cursorPos == screenStart)
 	    {
@@ -290,7 +291,7 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 	 }
 	 break;
       case KEY_DOWN:
-	 if (cursorPos != data->end()-1)
+	 if (cursorPos != data.end()-1)
 	 {
 	    if (cursorPos == screenStart+nlines-3)
 	    {
@@ -309,14 +310,13 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 }
 
 template< typename DequeType >
-void DequeListingWindow<DequeType>::assignNewDeque(deque<DequeType>* newDeque)
+void DequeListingWindow<DequeType>::assignNewDeque(deque<DequeType> newDeque)
 {
-   data->clear();
-   delete data;
+   data.clear();
    
    data = newDeque;
-   cursorPos   = data->begin();
-   screenStart = data->begin();
+   cursorPos   = data.begin();
+   screenStart = data.begin();
 
    select();
    
@@ -324,7 +324,7 @@ void DequeListingWindow<DequeType>::assignNewDeque(deque<DequeType>* newDeque)
    update(false);
 }
 
-TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>>* data) :
+TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>> data) :
    DequeListingWindow(startY, startX, nlines, ncols, borders, data)
 {
    select();
@@ -340,7 +340,7 @@ void TracksListingWindow::press()
    startPlayback(*cursorPos, 0);
 }
 
-AlbumsListingWindow::AlbumsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Album>>* data) :
+AlbumsListingWindow::AlbumsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Album>> data) :
    DequeListingWindow(startY, startX, nlines, ncols, borders, data)
 {
    select();
@@ -356,7 +356,7 @@ void AlbumsListingWindow::press()
    startPlayback(*cursorPos, PLAYBACK_OPTION_SHUFFLE);
 }
 
-ArtistsListingWindow::ArtistsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Artist>>* data) :
+ArtistsListingWindow::ArtistsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Artist>> data) :
    DequeListingWindow(startY, startX, nlines, ncols, borders, data)
 {
    select();

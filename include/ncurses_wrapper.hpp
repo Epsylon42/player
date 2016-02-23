@@ -11,7 +11,7 @@ using std::unique_ptr;
 using winptr = unique_ptr<WINDOW>
 
 #include <ncurses.h>
-   ; //TODO: emacs tries to indent following code without this
+   ; //NOTE: emacs tries to indent following code without this semicolon
 
 template< typename ... Args >
 inline int wprintw_(winptr& window, const char* fmtstr, Args... args);

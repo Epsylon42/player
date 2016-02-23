@@ -52,7 +52,7 @@ deque<shared_ptr<Track>> SmartPlaylist::getList() const
    deque<shared_ptr<Track>> ret;
 
    auto tracks = getTracks();
-   for (auto &track : *tracks)
+   for (auto &track : tracks)
    {
       if(AND_condition.check(track) && OR_condition.check(track))
       {

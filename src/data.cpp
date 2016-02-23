@@ -37,26 +37,26 @@ void addTrack(shared_ptr<Track> track)
    artistsMap[track->artistName]->addTrack(track);
 }
 
-deque<shared_ptr<Track> >* getTracks()
+deque<shared_ptr<Track>> getTracks()
 {
-   deque<shared_ptr<Track> >* tracks = new deque<shared_ptr<Track> >;
+   deque<shared_ptr<Track>> tracks;
    for (auto artist = artistsDeque.begin()+1; artist != artistsDeque.end(); artist++)
    {
       for (auto album = (*artist)->albumsDeque.begin()+1; album != (*artist)->albumsDeque.end(); album++)
       {
-	 tracks->insert(tracks->end(), (*album)->tracksDeque.begin(), (*album)->tracksDeque.end());
+	 tracks.insert(tracks.end(), (*album)->tracksDeque.begin(), (*album)->tracksDeque.end());
       }
    }
    
    return tracks;
 }
 
-deque<shared_ptr<Album> >* getAlbums(bool includeUnknown)
+deque<shared_ptr<Album>> getAlbums(bool includeUnknown)
 {
-   deque<shared_ptr<Album> >* albums = new deque<shared_ptr<Album> >;
+   deque<shared_ptr<Album>> albums;
    for (auto artist : artistsDeque)
    {
-      albums->insert(albums->end(), artist->albumsDeque.begin(), artist->albumsDeque.end());
+      albums.insert(albums.end(), artist->albumsDeque.begin(), artist->albumsDeque.end());
    }
    
    return albums;
@@ -197,11 +197,9 @@ Album::~Album()
    tracksMap.clear();
 }
 
-deque<shared_ptr<Track> >* Album::getTracks()
+deque<shared_ptr<Track>> Album::getTracks()
 {
-   deque<shared_ptr<Track> >* ret = new deque<shared_ptr<Track> >;
-   *ret = tracksDeque;
-   return ret;
+   return tracksDeque;
 }
 
 void Album::addTrack(shared_ptr<Track> track)
@@ -246,11 +244,9 @@ Artist::~Artist()
    albumsMap.clear();  
 }
 
-deque<shared_ptr<Album> >* Artist::getAlbums()
+deque<shared_ptr<Album>> Artist::getAlbums()
 {
-   deque<shared_ptr<Album> >* ret = new deque<shared_ptr<Album> >;
-   *ret = albumsDeque;
-   return ret;
+   return albumsDeque;
 }
 
 void Artist::addAlbum(shared_ptr<Album> album)

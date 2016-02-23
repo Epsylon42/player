@@ -27,8 +27,8 @@ namespace data
 void initData();
 
 void addTrack(std::shared_ptr<Track> track);
-std::deque<std::shared_ptr<Track>>* getTracks();
-std::deque<std::shared_ptr<Album>>* getAlbums(bool includeUnknown = true);
+std::deque<std::shared_ptr<Track>> getTracks();
+std::deque<std::shared_ptr<Album>> getAlbums(bool includeUnknown = true);
 
 struct Track
 {
@@ -64,7 +64,7 @@ struct Album
 
    Album(const std::string& name);
 
-   std::deque<std::shared_ptr<Track>>* getTracks();
+   std::deque<std::shared_ptr<Track>> getTracks();
    void addTrack(std::shared_ptr<Track> track);
    void testPrint();
 
@@ -82,7 +82,7 @@ struct Artist
 
    Artist(const std::string& name);
 
-   std::deque<std::shared_ptr<Album>>* getAlbums();
+   std::deque<std::shared_ptr<Album>> getAlbums();
    void addAlbum(std::shared_ptr<Album> album);
    void addTrack(std::shared_ptr<Track> track);
    void testPrint();

@@ -15,7 +15,8 @@ set(LIBS
 		pthread)
 
 set(FLAGS
-		-std=c++14)
+		-std=c++14
+		-g)
 
 find_package(Threads)
 
