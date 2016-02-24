@@ -83,7 +83,7 @@ void updateWindows()
    
    for (auto window : windows)
    {
-      window->update(true);
+      window->update();
    }
 }
 
@@ -207,16 +207,16 @@ void Window::reshapeWindow(int newY, int newX, int newLines, int newColumns)
 
    afterReshape();
    wclear(window);
-   update(false);
+   update();
 }
 
-void Window::update(bool isSelected)
+void Window::update()
 {
    displayBorders();
    
    for (auto win : subWindows)
    {
-      win->update(win == selectedSubWindow);
+      win->update();
    }
 
    interfaceMutex.lock();
@@ -247,7 +247,7 @@ DequeListingWindow<DequeType>::~DequeListingWindow()
 }
 
 template< typename DequeType >
-void DequeListingWindow<DequeType>::update(bool isSelected)
+void DequeListingWindow<DequeType>::update()
 {
    auto p = screenStart;
    for (int i = 0; i < nlines-2; i++)
@@ -271,7 +271,7 @@ void DequeListingWindow<DequeType>::update(bool isSelected)
       p++;
    }
 
-   Window::update(isSelected);
+   Window::update();
 }
 
 template< typename DequeType >
@@ -321,7 +321,7 @@ void DequeListingWindow<DequeType>::assignNewDeque(deque<DequeType> newDeque)
    select();
    
    wclear(window);
-   update(false);
+   update();
 }
 
 template< typename DequeType >
@@ -371,9 +371,9 @@ PlaybackControlWindow::~PlaybackControlWindow()
    winThread->join();
 }
 
-void PlaybackControlWindow::update(bool isSelected)
+void PlaybackControlWindow::update()
 {
-   Window::update(isSelected);
+   Window::update();
 }
 
 void PlaybackControlWindow::processKey(int ch)
@@ -443,7 +443,7 @@ void playbackWindowThread(PlaybackControlWindow* win)
 	 int time = play::NowPlaying::frame;
 	 wprintw(window, "%d", time);
 	 // interfaceMutex.unlock();
-	 win->Window::update(false);
+	 win->Window::update();
 	 usleep(10000);
       }
       else

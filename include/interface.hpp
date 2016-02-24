@@ -60,7 +60,7 @@ public:
    
    void reshapeWindow(int newY, int newX, int newLines, int newColumns);
 
-   virtual void update(bool isSelected);
+   virtual void update();
    virtual void processKey(int ch) = 0;
    
    virtual ~Window();
@@ -90,7 +90,7 @@ public:
 
    void assignNewDeque(std::deque<DequeType> newDeque);
    
-   virtual void update(bool isSelected) override;
+   virtual void update() override;
    virtual void processKey(int ch)      override;
 
    virtual ~DequeListingWindow()        override;
@@ -163,7 +163,7 @@ class PlaybackControlWindow : public Window
 public:
    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
 
-   virtual void update(bool isSelected) override;
+   virtual void update() override;
    virtual void processKey(int ch)      override;
 
    virtual ~PlaybackControlWindow()     override;
