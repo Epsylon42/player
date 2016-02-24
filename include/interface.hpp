@@ -5,6 +5,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <utility>
 
 #include "data.hpp"
 
@@ -83,6 +84,7 @@ class DequeListingWindow : public Window
 {
 public:
    typename std::deque<DequeType>::iterator cursorPos;
+   typename std::deque<DequeType>::iterator screenStart;
  
    DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType> data);
 
@@ -95,43 +97,58 @@ public:
 
 protected:
    std::deque<DequeType> data;
-   typename std::deque<DequeType>::iterator screenStart;
 
    virtual void select() = 0;
    virtual void press()  = 0;
-   
-   // void (*allocate)(DequeType);
-   // void (*select)(DequeType);
+
+   virtual std::string getName(typename std::deque<DequeType>::iterator iter) const = 0;
    
    virtual void afterReshape()          override;
 };
 
-
-
-class TracksListingWindow : public DequeListingWindow<std::shared_ptr<Track>>
+template< typename DequeType >
+class MediaListingWindow : public DequeListingWindow<DequeType>
 {
   public:
-   TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>> data);
+   template< typename ... Args >
+   MediaListingWindow(Args... args) :
+      DequeListingWindow<DequeType>::DequeListingWindow(std::forward<Args>(args)...) {}
+   
+   virtual std::string getName(typename std::deque<DequeType>::iterator iter) const override;
+};
+
+
+
+class TracksListingWindow : public MediaListingWindow<std::shared_ptr<Track>>
+{
+  public:
+   template< typename ... Args >
+      TracksListingWindow(Args... args) :
+      MediaListingWindow(std::forward<Args>(args)...) {select();}
+   
+  protected:
+   virtual void select() override;
+   virtual void press()  override;
+};
+
+class AlbumsListingWindow : public MediaListingWindow<std::shared_ptr<Album>>
+{
+  public:
+   template< typename ... Args >
+      AlbumsListingWindow(Args... args) :
+      MediaListingWindow(std::forward<Args>(args)...) {select();}
 
   protected:
    virtual void select() override;
    virtual void press()  override;
 };
 
-class AlbumsListingWindow : public DequeListingWindow<std::shared_ptr<Album>>
+class ArtistsListingWindow : public MediaListingWindow<std::shared_ptr<Artist>>
 {
   public:
-   AlbumsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Album>> data);
-
-  protected:
-   virtual void select() override;
-   virtual void press()  override;
-};
-
-class ArtistsListingWindow : public DequeListingWindow<std::shared_ptr<Artist>>
-{
-  public:
-   ArtistsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Artist>> data);
+   template< typename ... Args >
+      ArtistsListingWindow(Args... args) :
+      MediaListingWindow(std::forward<Args>(args)...) {select();}
 
   protected:
    virtual void select() override;

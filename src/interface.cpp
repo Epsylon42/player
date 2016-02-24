@@ -266,7 +266,7 @@ void DequeListingWindow<DequeType>::update(bool isSelected)
 	    wattron(window, A_BOLD);
 	 }
       }
-      wprintw(window, "%s", (*p)->name.c_str());
+      wprintw(window, "%s", getName(p).c_str());
       wattroff(window, A_REVERSE | A_BOLD);
       p++;
    }
@@ -324,10 +324,10 @@ void DequeListingWindow<DequeType>::assignNewDeque(deque<DequeType> newDeque)
    update(false);
 }
 
-TracksListingWindow::TracksListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Track>> data) :
-   DequeListingWindow(startY, startX, nlines, ncols, borders, data)
+template< typename DequeType >
+string MediaListingWindow<DequeType>::getName(typename deque<DequeType>::iterator iter) const
 {
-   select();
+   return (*iter)->name;
 }
 
 void TracksListingWindow::select()
@@ -340,12 +340,6 @@ void TracksListingWindow::press()
    startPlayback(*cursorPos, 0);
 }
 
-AlbumsListingWindow::AlbumsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Album>> data) :
-   DequeListingWindow(startY, startX, nlines, ncols, borders, data)
-{
-   select();
-}
-
 void AlbumsListingWindow::select()
 {
    tracksWindow->assignNewDeque((*cursorPos)->getTracks());
@@ -354,12 +348,6 @@ void AlbumsListingWindow::select()
 void AlbumsListingWindow::press()
 {
    startPlayback(*cursorPos, PLAYBACK_OPTION_SHUFFLE);
-}
-
-ArtistsListingWindow::ArtistsListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<std::shared_ptr<Artist>> data) :
-   DequeListingWindow(startY, startX, nlines, ncols, borders, data)
-{
-   select();
 }
 
 void ArtistsListingWindow::select()
