@@ -146,12 +146,13 @@ unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
 	 playbackControl.pop();
 	 playbackControlMutex.unlock();
 	 
-	 unique_ptr<PlayCommand> playCommand;
 	 switch (command->commandID)
 	 {
 	    case PLAYBACK_COMMAND_PLAY: //TODO: provide reliable way to make sure command is actually PlayCommand in this case
-	       playCommand.reset(dynamic_cast<PlayCommand*>(command.release()));
+	    {
+	       unique_ptr<PlayCommand> playCommand(dynamic_cast<PlayCommand*>(command.release()));
 	       return move(playCommand->tracks);
+	    }
 	    case PLAYBACK_COMMAND_EXIT:
 	       return nullptr;
 	    default:
