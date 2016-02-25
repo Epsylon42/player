@@ -170,12 +170,12 @@ public:
 
 protected:
    bool stopThread;
-   std::unique_ptr<std::thread> winThread;
+   std::thread winThread;
 
    void rewindForward();
    void rewindBackward();
+
+   void playbackWindowThread();
    
    virtual void afterReshape()          override;
 };
-
-void playbackWindowThread(PlaybackControlWindow* win);

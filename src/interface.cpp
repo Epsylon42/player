@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <iostream>
+#include <functional>
 
 using namespace std;
 using namespace interface;
@@ -363,12 +364,12 @@ void ArtistsListingWindow::press()
 PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
    Window(startY, startX, nlines, ncols, borders),
    stopThread(false),
-   winThread(new thread(playbackWindowThread, this)) {}
+   winThread(mem_fn(&PlaybackControlWindow::playbackWindowThread), this) {}
 
 PlaybackControlWindow::~PlaybackControlWindow()
 {
    stopThread = true;
-   winThread->join();
+   winThread.join();
 }
 
 void PlaybackControlWindow::update()
@@ -406,22 +407,18 @@ void PlaybackControlWindow::rewindBackward()
    
 }
 
-void playbackWindowThread(PlaybackControlWindow* win)
+void PlaybackControlWindow::playbackWindowThread()
 {
-   unique_ptr<WINDOW>& window = win->window;
-   while(!win->stopThread)
+   while(!stopThread)
    {
-      for (int i = 1; i < win->nlines-1; i++)
+      for (int i = 1; i < nlines-1; i++)
       {
-	 // interfaceMutex.lock();
 	 wmove(window, i, 1);
 	 wclrtoeol(window);
-	 // interfaceMutex.unlock();
       }
       
       if (playbackInProcess() && play::NowPlaying::track)
       {
-	 // interfaceMutex.lock();
 	 wmove(window, 1, 1);
 	 wattron(window, A_BOLD);
 	 wprintw(window, "Track: ");
@@ -442,8 +439,8 @@ void playbackWindowThread(PlaybackControlWindow* win)
 	 wattroff(window, A_BOLD);
 	 int time = play::NowPlaying::frame;
 	 wprintw(window, "%d", time);
-	 // interfaceMutex.unlock();
-	 win->Window::update();
+	 
+	 Window::update();
 	 usleep(10000);
       }
       else
