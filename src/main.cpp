@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
     interfaceLoop();
 
     endPlay();
-
+    
     data::artistsDeque.clear();
     data::artistsMap.clear();
 

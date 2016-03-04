@@ -33,11 +33,12 @@ std::deque<std::shared_ptr<Album>> getAlbums(bool includeUnknown = true);
 struct Track
 {
     std::string       filePath;
-    AVFormatContext*  container;
-    AVCodecContext*   codecContext;
-    AVCodec*          codec;
-    ao_sample_format* sampleFormat;
+    AVFormatContext*  container = nullptr;
+    AVCodecContext*   codecContext = nullptr;
+    AVCodec*          codec = nullptr;
+    ao_sample_format sampleFormat;
     int               streamID;
+    bool opened = false;
 
     std::string name;
     std::string artistName;

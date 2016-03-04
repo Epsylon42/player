@@ -65,7 +65,7 @@ deque<shared_ptr<Album>> getAlbums(bool includeUnknown)
 Track::Track(const string& file)
 {
     filePath = file;
-    container = avformat_alloc_context();
+    container = nullptr;
     codecContext = nullptr;
     codec = nullptr;
 
@@ -77,13 +77,19 @@ Track::Track(const string& file)
 
 Track::~Track()
 {
-    close();
-    delete sampleFormat;
-    delete container;
+    if (opened)
+    {
+	close();
+    }
 }
 
 void Track::open()
 {
+    if (opened)
+    {
+        return;
+    }
+
     container = avformat_alloc_context();
 
     if (avformat_open_input(&container, filePath.c_str(), nullptr, nullptr) < 0)
@@ -100,7 +106,7 @@ void Track::open()
     }
 
     streamID = -1;
-    for (int i = 0; i < container->nb_streams; i++)
+    for (unsigned int i = 0; i < container->nb_streams; i++)
     {
 	if (container->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
 	{
@@ -129,58 +135,23 @@ void Track::open()
 		string("Could not open codec: ") + filePath.c_str()
 		);
     }
+
+    opened = true;
 }
 
 void Track::close()
 {
-    //WARNING: this might cause memory leak
-
-    // if (codec != nullptr)
-    // {
-    //    delete codec;
-    //    codec = nullptr;
-    // }
-    // if (codecContext != nullptr)
-    // {
-    //    delete codecContext;
-    //    codecContext = nullptr;
-    // }
-    if (container != nullptr)
-    {
-	avformat_close_input(&container);
-	container = nullptr;
-    }
+    avcodec_close(codecContext);
+    avformat_close_input(&container);
+    avformat_free_context(container);
+    opened = false;
 }
 
 void Track::decodeMetadata()
 {
-    AVDictionaryEntry* title = av_dict_get(container->metadata, "title", nullptr, 0);
-    if (title == nullptr)
-    {
-	name = filePath;
-    }
-    else
-    {
-	name = title->value;
-    }
-    AVDictionaryEntry* artist = av_dict_get(container->metadata, "artist", nullptr, 0);
-    if (artist == nullptr)
-    {
-	artistName = "unknown";
-    }
-    else
-    {
-	artistName = artist->value;
-    }
-    AVDictionaryEntry* album = av_dict_get(container->metadata, "album", nullptr, 0);
-    if (album == nullptr)
-    {
-	albumName = "unknown";
-    }
-    else
-    {
-	albumName = album->value;
-    }
+	name = getMetadata("title", {container->metadata, container->streams[streamID]->metadata}, filePath);
+	albumName = getMetadata("album", {container->metadata, container->streams[streamID]->metadata});
+	artistName = getMetadata("artist", {container->metadata, container->streams[streamID]->metadata});
 }
 
 void Track::testPrint()

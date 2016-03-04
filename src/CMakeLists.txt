@@ -20,6 +20,8 @@ set(FLAGS
 
 find_package(Threads)
 
+find_library(${LIBS})
+
 add_definitions(${FLAGS})
 
 add_executable(${NAME} ${SOURCES})
