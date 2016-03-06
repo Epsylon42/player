@@ -37,7 +37,8 @@ namespace play
        that stop current playback) so that it could be processed by
        upper(?) function, which is playbackThread()
        */
-    extern std::queue<std::unique_ptr<Command>> playbackControl;
+    extern std::queue<std::unique_ptr<Command>>     playbackControl;
+    extern std::deque<std::unique_ptr<CommandPLAY>> playbackQueue;
     extern bool playbackPause;
     extern std::unique_ptr<std::thread> playback;
 
@@ -107,7 +108,7 @@ class CommandRESUME : public Command
 class CommandTOGGLE : public Command
 {
     public:
-	CommandTOGGLE() : Command(CommandType::stop) {};
+	CommandTOGGLE() : Command(CommandType::toggle) {};
 };
 
 class CommandSTOP : public Command
@@ -137,7 +138,8 @@ class CommandEXIT : public Command
 // PLAYBACK OPTIONS
 enum class PlaybackOption
 {
-    shuffle
+    shuffle,
+    queue
 };
 
 class PlaybackOptions

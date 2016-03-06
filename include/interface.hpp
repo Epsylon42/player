@@ -99,7 +99,7 @@ class DequeListingWindow : public Window
 	std::deque<DequeType> data;
 
 	virtual void select() = 0;
-	virtual void press()  = 0;
+	virtual void press(int key)  = 0;
 
 	virtual std::string getName(typename std::deque<DequeType>::iterator iter) const = 0;
 
@@ -128,7 +128,7 @@ class TracksListingWindow : public MediaListingWindow<std::shared_ptr<Track>>
 
     protected:
 	virtual void select() override;
-	virtual void press()  override;
+	virtual void press(int key)  override;
 };
 
 class AlbumsListingWindow : public MediaListingWindow<std::shared_ptr<Album>>
@@ -140,7 +140,7 @@ class AlbumsListingWindow : public MediaListingWindow<std::shared_ptr<Album>>
 
     protected:
 	virtual void select() override;
-	virtual void press()  override;
+	virtual void press(int key)  override;
 };
 
 class ArtistsListingWindow : public MediaListingWindow<std::shared_ptr<Artist>>
@@ -152,7 +152,7 @@ class ArtistsListingWindow : public MediaListingWindow<std::shared_ptr<Artist>>
 
     protected:
 	virtual void select() override;
-	virtual void press() override;
+	virtual void press(int key) override;
 };
 
 

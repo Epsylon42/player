@@ -21,6 +21,7 @@ bool              play::NowPlaying::playing = false;
 
 mutex                                play::playbackControlMutex;
 queue<unique_ptr<Command>>           play::playbackControl;
+deque<unique_ptr<CommandPLAY>>       play::playbackQueue;
 bool                                 play::playbackPause = false;
 unique_ptr<thread> play::playback(nullptr);
 
@@ -35,6 +36,12 @@ void endPlay()
     sendPlaybackCommand(new CommandEXIT());
     playback->join();
     playback.reset();
+
+    playbackQueue.clear();
+    while (!playbackControl.empty())
+    {
+        playbackControl.pop();
+    }
 }
 
 void playTrack(shared_ptr<Track> track)
@@ -285,6 +292,15 @@ unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
 		    break;
 	    }
 	}
+
+        if (!playbackQueue.empty())
+	{
+	    unique_ptr<CommandPLAY> playCommand(playbackQueue.front().release());
+	    playbackQueue.pop_front();
+
+	    return move(playCommand->tracks);
+	}
+
 	usleep(500000);
     }
 }
@@ -369,23 +385,37 @@ void processPlaybackCommand()
 
 void sendPlaybackCommand(Command* command)
 {
-    // Do not add dublicated commands
-    //!!!: this might not be a very good idea
-    if (playbackControl.empty() ||
-	    playbackControl.front()->type() != command->type())
+    lock_guard<mutex> lock(playbackControlMutex);
+
+    switch (command->type()) // process special cases
     {
-	playbackControlMutex.lock();
-	switch (command->type()) // process special cases
-	{
-	    case CommandType::play:
-		playbackControl.push(make_unique<CommandSTOP>());
-		break;
-	    default:
-		break;
-	}
-	playbackControl.push(unique_ptr<Command>(command));
-	playbackControlMutex.unlock();
+	case CommandType::play:
+	    {
+		CommandPLAY* playCommand = dynamic_cast<CommandPLAY*>(command);
+
+		if (playCommand->options & PlaybackOption::queue)
+		{
+		    playbackQueue.emplace_back(playCommand);
+		    return;
+		}
+		else
+		{
+		    playbackQueue.clear();
+                    //TODO: add option not to clear this queue
+
+		    playbackControl.emplace(new CommandSTOP());
+		    //NOTE: what is done here might be not obvious
+		    //don't know if there is something that should be done here
+		}
+	    }
+	case CommandType::stop:
+	    playbackQueue.clear();
+	    break;
+	default:
+	    break;
     }
+
+    playbackControl.emplace(command);
 }
 
 bool playbackInProcess()
@@ -419,7 +449,14 @@ PlaybackOptions::PlaybackOptions(PlaybackOption option) :
 
 PlaybackOptions::operator bool() const
 {
-    return options.empty();
+    if (options.empty())
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
 
 PlaybackOptions operator| (const PlaybackOptions& fst, const PlaybackOptions& snd)

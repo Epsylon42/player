@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <functional>
+#include <initializer_list>
 
 using namespace std;
 using namespace interface;
@@ -130,10 +131,10 @@ bool readKey()
 	case 'E': // (E)nd
 	    sendPlaybackCommand(new CommandSTOP());
 	    break;
-	case 'p':
+	case '<':
 	    sendPlaybackCommand(new CommandPREVIOUS());
 	    break;
-	case 'n':
+	case '>':
 	    sendPlaybackCommand(new CommandNEXT());
 	    break;
 	default:
@@ -302,10 +303,8 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 		select();
 	    }
 	    break;
-	case 'S':
-	    press();
-	    break;
 	default:
+	    press(ch);
 	    break;
     }
 }
@@ -336,9 +335,20 @@ void TracksListingWindow::select()
 
 }
 
-void TracksListingWindow::press()
+void TracksListingWindow::press(int key)
 {
-    startPlayback(*cursorPos, {});
+    vector<PlaybackOption> options;
+    switch (key)
+    {
+	case 's':
+	    options.push_back(PlaybackOption::queue);
+	case 'S':
+	    startPlayback(*cursorPos, options);
+	    break;
+
+	default:
+	    break;
+    }
 }
 
 void AlbumsListingWindow::select()
@@ -346,9 +356,20 @@ void AlbumsListingWindow::select()
     tracksWindow->assignNewDeque((*cursorPos)->getTracks());
 }
 
-void AlbumsListingWindow::press()
+void AlbumsListingWindow::press(int key)
 {
-    startPlayback(*cursorPos, PlaybackOption::shuffle);
+    vector<PlaybackOption> options = {PlaybackOption::shuffle};
+    switch (key)
+    {
+	case 's':
+	    options.push_back(PlaybackOption::queue);
+	case 'S':
+	    startPlayback(*cursorPos, options);
+	    break;
+
+	default:
+	    break;
+    }
 }
 
 void ArtistsListingWindow::select()
@@ -356,9 +377,20 @@ void ArtistsListingWindow::select()
     albumsWindow->assignNewDeque((*cursorPos)->getAlbums());
 }
 
-void ArtistsListingWindow::press()
+void ArtistsListingWindow::press(int key)
 {
-    startPlayback(*cursorPos, PlaybackOption::shuffle);
+    vector<PlaybackOption> options = {PlaybackOption::shuffle};
+    switch (key)
+    {
+	case 's':
+	    options.push_back(PlaybackOption::queue);
+	case 'S':
+	    startPlayback(*cursorPos, options);
+	    break;
+
+	default:
+	    break;
+    }
 }
 
 PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
@@ -420,25 +452,41 @@ void PlaybackControlWindow::playbackWindowThread()
 	if (playbackInProcess() && play::NowPlaying::track)
 	{
 	    wmove(window, 1, 1);
+	    wclrtoeol(window);
+
 	    wattron(window, A_BOLD);
 	    wprintw(window, "Track: ");
-
 	    wattroff(window, A_BOLD);
+
 	    wprintw(window, "%s", play::NowPlaying::track->name.c_str());
-	    wattron(window, A_BOLD);
+
 
 	    wmove(window, 2, 1);
+	    wclrtoeol(window);
+	    
+	    wattron(window, A_BOLD);
 	    if (play::playbackPause)
 	    {
-		wprintw(window, "paused:  ");
+		wprintw(window, "Paused:  ");
 	    }
 	    else
 	    {
-		wprintw(window, "playing: ");
+		wprintw(window, "Playing: ");
 	    }
 	    wattroff(window, A_BOLD);
+	    
 	    int time = play::NowPlaying::frame;
 	    wprintw(window, "%d", time);
+
+
+	    wmove(window, 3, 1);
+	    wclrtoeol(window);
+
+	    wattron(window, A_BOLD);
+	    wprintw(window, "Queued: ");
+	    wattroff(window, A_BOLD);
+	    wprintw(window, "%d", play::playbackQueue.size());
+
 
 	    Window::update();
 	    usleep(10000);
