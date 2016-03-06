@@ -32,7 +32,7 @@ void initPlay()
 
 void endPlay()
 {
-    sendPlaybackCommand(new Command(PLAYBACK_COMMAND_EXIT));
+    sendPlaybackCommand(new CommandEXIT());
     playback->join();
     playback.reset();
 }
@@ -209,7 +209,7 @@ void playTrack(shared_ptr<Track> track)
     delete [] buffer;
 }
 
-void startPlayback(shared_ptr<Artist> artist, uint_16 options)
+void startPlayback(shared_ptr<Artist> artist, PlaybackOptions options)
 {
     deque<shared_ptr<Track>> playbackDeque;
     for (auto album : artist->albumsDeque)
@@ -219,7 +219,7 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 	    playbackDeque.insert(playbackDeque.end(), album->tracksDeque.begin(), album->tracksDeque.end());
 	}
     }
-    if (options & PLAYBACK_OPTION_SHUFFLE)
+    if (options & PlaybackOption::shuffle)
     {
 	random_shuffle(playbackDeque.begin(), playbackDeque.end());
     }
@@ -229,16 +229,16 @@ void startPlayback(shared_ptr<Artist> artist, uint_16 options)
 	return;
     }
 
-    sendPlaybackCommand(new PlayCommand(move(playbackDeque), 0));
+    sendPlaybackCommand(new CommandPLAY(move(playbackDeque), options));
 }
 
-void startPlayback(shared_ptr<Album> album, uint_16 options)
+void startPlayback(shared_ptr<Album> album, PlaybackOptions options)
 {
     deque<shared_ptr<Track>> playbackDeque;
 
     playbackDeque.insert(playbackDeque.end(), album->tracksDeque.begin(), album->tracksDeque.end());
 
-    if (options & PLAYBACK_OPTION_SHUFFLE)
+    if (options & PlaybackOption::shuffle)
     {
 	random_shuffle(playbackDeque.begin(), playbackDeque.end());
     }
@@ -248,17 +248,17 @@ void startPlayback(shared_ptr<Album> album, uint_16 options)
 	return;
     }
 
-    sendPlaybackCommand(new PlayCommand(move(playbackDeque), 0));
+    sendPlaybackCommand(new CommandPLAY(move(playbackDeque), options));
 }
 
-void startPlayback(shared_ptr<Track> track, uint_16 options)
+void startPlayback(shared_ptr<Track> track, PlaybackOptions options)
 {
-    sendPlaybackCommand(new PlayCommand(deque<shared_ptr<Track>>({track}), 0));
+    sendPlaybackCommand(new CommandPLAY({track}, options));
 }
 
-void startPlayback(shared_ptr<Playlist> playlist, uint_16 options)
+void startPlayback(shared_ptr<Playlist> playlist, PlaybackOptions options)
 {
-    sendPlaybackCommand(new PlayCommand(deque<shared_ptr<Track>>(playlist->getList()), 0));
+    sendPlaybackCommand(new CommandPLAY(playlist->getList(), options));
 }
 
 unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
@@ -272,14 +272,14 @@ unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
 	    playbackControl.pop();
 	    playbackControlMutex.unlock();
 
-	    switch (command->commandID)
+	    switch (command->type())
 	    {
-		case PLAYBACK_COMMAND_PLAY: //TODO: provide reliable way to make sure command is actually PlayCommand in this case
+		case CommandType::play: //TODO: provide reliable way to make sure command is actually PlayCommand in this case
 		    {
-			unique_ptr<PlayCommand> playCommand(dynamic_cast<PlayCommand*>(command.release()));
+			unique_ptr<CommandPLAY> playCommand(dynamic_cast<CommandPLAY*>(command.release()));
 			return move(playCommand->tracks);
 		    }
-		case PLAYBACK_COMMAND_EXIT:
+		case CommandType::exit:
 		    return nullptr;
 		default:
 		    break;
@@ -307,17 +307,17 @@ void playbackThread()
 	    {
 		playTrack(*track);
 	    }
-	    catch (uint_8& e)
+	    catch (CommandType& e)
 	    {
 		switch (e)
 		{
-		    case PLAYBACK_COMMAND_STOP:
+		    case CommandType::stop:
 			NowPlaying::playing = false;
 			break;
-		    case PLAYBACK_COMMAND_NEXT:
+		    case CommandType::next:
 			track++;
 			continue;
-		    case PLAYBACK_COMMAND_PREV:
+		    case CommandType::previous:
 			//FIXME: this switches between two first tracks
 			if (track != tracks->begin())
 			{
@@ -325,7 +325,7 @@ void playbackThread()
 			    continue;
 			}
 			break;
-		    case PLAYBACK_COMMAND_EXIT:
+		    case CommandType::exit:
 			goto end;
 		    default:
 			exit(0); //this should not happen
@@ -349,19 +349,19 @@ void processPlaybackCommand()
 	playbackControl.pop();
 	playbackControlMutex.unlock();
 
-	switch (command->commandID)
+	switch (command->type())
 	{
-	    case PLAYBACK_COMMAND_PAUSE:
+	    case CommandType::pause:
 		playbackPause = true;
 		break;
-	    case PLAYBACK_COMMAND_RESUME:
+	    case CommandType::resume:
 		playbackPause = false;
 		break;
-	    case PLAYBACK_COMMAND_TOGGLE:
+	    case CommandType::toggle:
 		playbackPause = !playbackPause;
 		break;
 	    default:
-		throw command->commandID;
+		throw command->type();
 		break;
 	}
     }
@@ -372,13 +372,13 @@ void sendPlaybackCommand(Command* command)
     // Do not add dublicated commands
     //!!!: this might not be a very good idea
     if (playbackControl.empty() ||
-	    playbackControl.front()->commandID != command->commandID)
+	    playbackControl.front()->type() != command->type())
     {
 	playbackControlMutex.lock();
-	switch (command->commandID) // process special cases
+	switch (command->type()) // process special cases
 	{
-	    case PLAYBACK_COMMAND_PLAY:
-		playbackControl.push(make_unique<Command>(PLAYBACK_COMMAND_STOP));
+	    case CommandType::play:
+		playbackControl.push(make_unique<CommandSTOP>());
 		break;
 	    default:
 		break;
@@ -394,18 +394,67 @@ bool playbackInProcess()
 }
 
 
-Command::Command() {}
+Command::Command(CommandType commandType) :
+    commandType(commandType) {};
 
-Command::Command(char commandID) :
-    commandID(commandID) {}
+Command::~Command() {};
 
-    Command::~Command() {}
+CommandType Command::type() const
+{
+    return commandType;
+}
 
 
-    PlayCommand::PlayCommand(deque<shared_ptr<Track>> tracks, uint_16 options) :
-	Command(PLAYBACK_COMMAND_PLAY),
-	tracks(make_unique<decltype(tracks)>(tracks.begin(), tracks.end())),
-	options(options) {}
+PlaybackOptions::PlaybackOptions(vector<PlaybackOption> options) :
+    options(options) {};
+
+PlaybackOptions::PlaybackOptions(initializer_list<PlaybackOption> options) :
+    options(options) {};
+
+PlaybackOptions::PlaybackOptions(const PlaybackOptions& copy) :
+    options(copy.options) {};
+
+PlaybackOptions::PlaybackOptions(PlaybackOption option) :
+    options{option} {};
+
+PlaybackOptions::operator bool() const
+{
+    return options.empty();
+}
+
+PlaybackOptions operator| (const PlaybackOptions& fst, const PlaybackOptions& snd)
+{
+    vector<PlaybackOption> newOptions(fst.options);
+    for (auto &option : snd.options)
+    {
+        if (count(newOptions.begin(), newOptions.end(), option) == 0)
+	{
+	    newOptions.push_back(option);
+	}
+    }
+
+    return PlaybackOptions(newOptions);
+}
+
+PlaybackOptions operator& (const PlaybackOptions& fst, const PlaybackOptions& snd)
+{
+    vector<PlaybackOption> newOptions;
+    for (auto &option : fst.options)
+    {
+	if (count(snd.options.begin(), snd.options.end(), option) > 0)
+	{
+	    newOptions.push_back(option);
+	}
+    }
+
+    return PlaybackOptions(newOptions);
+}
+
+
+CommandPLAY::CommandPLAY(const deque<shared_ptr<Track>>& tracks, PlaybackOptions options) :
+    Command(CommandType::play),
+    tracks(new deque<shared_ptr<Track>>(tracks.begin(), tracks.end())),
+    options(options) {};
 
 
 void NowPlaying::reset()

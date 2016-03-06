@@ -9,21 +9,20 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <initializer_list>
 
 
-constexpr uint_8 PLAYBACK_COMMAND_PAUSE  = 1;
-constexpr uint_8 PLAYBACK_COMMAND_RESUME = 2;
-constexpr uint_8 PLAYBACK_COMMAND_TOGGLE = 3;
-constexpr uint_8 PLAYBACK_COMMAND_STOP   = 4;
-constexpr uint_8 PLAYBACK_COMMAND_PREV   = 5;
-constexpr uint_8 PLAYBACK_COMMAND_NEXT   = 6;
-constexpr uint_8 PLAYBACK_COMMAND_PLAY   = 7;
-constexpr uint_8 PLAYBACK_COMMAND_EXIT   = 8;
+class Command;
+class CommandPAUSE;
+class CommandRESUME;
+class CommandTOGGLE;
+class CommandSTOP;
+class CommandPREVIOUS;
+class CommandNEXT;
+class CommandEXIT;
+class CommandPLAY;
 
-constexpr uint_16 PLAYBACK_OPTION_SHUFFLE = 0b0000000000000011;
-
-struct Command;
-struct ao_device_wrapper;
+class PlaybackOptions;
 
 namespace play
 {
@@ -55,10 +54,10 @@ namespace play
 void initPlay();
 void endPlay();
 void playTrack(std::shared_ptr<Track> track);
-void startPlayback(std::shared_ptr<Artist> artist, uint_16 options = 0);
-void startPlayback(std::shared_ptr<Album> album, uint_16 options = 0);
-void startPlayback(std::shared_ptr<Track> track, uint_16 options = 0);
-void startPlayback(std::shared_ptr<Playlist> playlist, uint_16 options = 0);
+void startPlayback(std::shared_ptr<Artist> artist, PlaybackOptions options);
+void startPlayback(std::shared_ptr<Album> album, PlaybackOptions options);
+void startPlayback(std::shared_ptr<Track> track, PlaybackOptions options );
+void startPlayback(std::shared_ptr<Playlist> playlist, PlaybackOptions options);
 std::unique_ptr<std::deque<std::shared_ptr<Track>>> playbackThreadWait();
 void playbackThread();
 void playPacket(AVPacket* packet, ao_device* device, std::shared_ptr<Track> track);
@@ -66,17 +65,106 @@ void processPlaybackCommand();
 void sendPlaybackCommand(Command* command);
 bool playbackInProcess();
 
-struct Command
+
+enum class CommandType
 {
-    uint_8 commandID;
-    Command();
-    Command(char commandID);
+    pause,
+    resume,
+    toggle,
+    stop,
+    previous,
+    next,
+    exit,
+    play
+};
+
+// SIMPLE COMMANDS
+class Command
+{
+    const CommandType commandType;
+
+    protected:
+    Command(CommandType commandType);
+
+    public:
+
+    CommandType type() const;
     virtual ~Command();
 };
 
-struct PlayCommand : Command
+class CommandPAUSE : public Command
 {
-    std::unique_ptr<std::deque<std::shared_ptr<Track>>> tracks;
-    uint_16 options;
-    PlayCommand(std::deque<std::shared_ptr<Track>> tracks, uint_16 options);
+    public:
+	CommandPAUSE() : Command(CommandType::pause) {};
+};
+
+class CommandRESUME : public Command
+{
+    public:
+	CommandRESUME() : Command(CommandType::resume) {};
+};
+
+class CommandTOGGLE : public Command
+{
+    public:
+	CommandTOGGLE() : Command(CommandType::stop) {};
+};
+
+class CommandSTOP : public Command
+{
+    public:
+	CommandSTOP() : Command(CommandType::stop) {};
+};
+
+class CommandPREVIOUS : public Command
+{
+    public:
+	CommandPREVIOUS() : Command(CommandType::previous) {};
+};
+
+class CommandNEXT : public Command
+{
+    public:
+	CommandNEXT() : Command(CommandType::next) {};
+};
+
+class CommandEXIT : public Command
+{
+    public:
+	CommandEXIT() : Command(CommandType::exit) {};
+};
+
+// PLAYBACK OPTIONS
+enum class PlaybackOption
+{
+    shuffle
+};
+
+class PlaybackOptions
+{
+    friend PlaybackOptions operator| (const PlaybackOptions& fst, const PlaybackOptions& snd);
+    friend PlaybackOptions operator& (const PlaybackOptions& fst, const PlaybackOptions& snd);
+
+    std::vector<PlaybackOption> options;
+
+    public:
+    PlaybackOptions(std::vector<PlaybackOption> options);
+    PlaybackOptions(std::initializer_list<PlaybackOption> options);
+    PlaybackOptions(const PlaybackOptions& copy);
+    PlaybackOptions(PlaybackOption option);
+
+    operator bool() const;
+};
+
+PlaybackOptions operator| (const PlaybackOptions& fst, const PlaybackOptions& snd);
+PlaybackOptions operator& (const PlaybackOptions& fst, const PlaybackOptions& snd);
+
+// PLAYBACK COMMAND
+class CommandPLAY : public Command
+{
+    public:
+        CommandPLAY(const std::deque<std::shared_ptr<Track>>& tracks, PlaybackOptions options);
+
+	std::unique_ptr<std::deque<std::shared_ptr<Track>>> tracks;
+	PlaybackOptions options;
 };

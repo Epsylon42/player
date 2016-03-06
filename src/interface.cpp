@@ -125,16 +125,16 @@ bool readKey()
 	    selectedWindow = playbackWindow;
 	    break;
 	case ' ':
-	    sendPlaybackCommand(new Command(PLAYBACK_COMMAND_TOGGLE));
+	    sendPlaybackCommand(new CommandTOGGLE());
 	    break;
 	case 'E': // (E)nd
-	    sendPlaybackCommand(new Command(PLAYBACK_COMMAND_STOP));
+	    sendPlaybackCommand(new CommandSTOP());
 	    break;
 	case 'p':
-	    sendPlaybackCommand(new Command(PLAYBACK_COMMAND_PREV));
+	    sendPlaybackCommand(new CommandPREVIOUS());
 	    break;
 	case 'n':
-	    sendPlaybackCommand(new Command(PLAYBACK_COMMAND_NEXT));
+	    sendPlaybackCommand(new CommandNEXT());
 	    break;
 	default:
 	    selectedWindow->processKey(ch);
@@ -143,7 +143,7 @@ bool readKey()
 }
 
 Window::Window(int startY, int startX, int nlines, int ncols, char borders) :
-    startY(startY), startX(startX), nlines(nlines), ncols(ncols)
+    startX(startX), startY(startY), nlines(nlines), ncols(ncols)
 {
     window.reset(newwin(nlines, ncols, startY, startX));
     // nodelay(window, true);
@@ -338,7 +338,7 @@ void TracksListingWindow::select()
 
 void TracksListingWindow::press()
 {
-    startPlayback(*cursorPos, 0);
+    startPlayback(*cursorPos, {});
 }
 
 void AlbumsListingWindow::select()
@@ -348,7 +348,7 @@ void AlbumsListingWindow::select()
 
 void AlbumsListingWindow::press()
 {
-    startPlayback(*cursorPos, PLAYBACK_OPTION_SHUFFLE);
+    startPlayback(*cursorPos, PlaybackOption::shuffle);
 }
 
 void ArtistsListingWindow::select()
@@ -358,7 +358,7 @@ void ArtistsListingWindow::select()
 
 void ArtistsListingWindow::press()
 {
-    startPlayback(*cursorPos, PLAYBACK_OPTION_SHUFFLE);
+    startPlayback(*cursorPos, PlaybackOption::shuffle);
 }
 
 PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
