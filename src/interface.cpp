@@ -3,6 +3,8 @@
 
 #include "ncurses_wrapper.hpp"
 
+#include <vector>
+#include <set>
 #include <unistd.h>
 #include <iostream>
 #include <functional>
@@ -337,11 +339,11 @@ void TracksListingWindow::select()
 
 void TracksListingWindow::press(int key)
 {
-    vector<PlaybackOption> options;
+    set<PlaybackOption> options;
     switch (key)
     {
 	case 's':
-	    options.push_back(PlaybackOption::queue);
+	    options.insert(PlaybackOption::queue);
 	case 'S':
 	    startPlayback(*cursorPos, options);
 	    break;
@@ -358,11 +360,11 @@ void AlbumsListingWindow::select()
 
 void AlbumsListingWindow::press(int key)
 {
-    vector<PlaybackOption> options = {PlaybackOption::shuffle};
+    set<PlaybackOption> options = {PlaybackOption::shuffle};
     switch (key)
     {
 	case 's':
-	    options.push_back(PlaybackOption::queue);
+	    options.insert(PlaybackOption::queue);
 	case 'S':
 	    startPlayback(*cursorPos, options);
 	    break;
@@ -379,11 +381,11 @@ void ArtistsListingWindow::select()
 
 void ArtistsListingWindow::press(int key)
 {
-    vector<PlaybackOption> options = {PlaybackOption::shuffle};
+    set<PlaybackOption> options = {PlaybackOption::shuffle};
     switch (key)
     {
 	case 's':
-	    options.push_back(PlaybackOption::queue);
+	    options.insert(PlaybackOption::queue);
 	case 'S':
 	    startPlayback(*cursorPos, options);
 	    break;

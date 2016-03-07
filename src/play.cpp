@@ -435,59 +435,6 @@ CommandType Command::type() const
 }
 
 
-PlaybackOptions::PlaybackOptions(vector<PlaybackOption> options) :
-    options(options) {};
-
-PlaybackOptions::PlaybackOptions(initializer_list<PlaybackOption> options) :
-    options(options) {};
-
-PlaybackOptions::PlaybackOptions(const PlaybackOptions& copy) :
-    options(copy.options) {};
-
-PlaybackOptions::PlaybackOptions(PlaybackOption option) :
-    options{option} {};
-
-PlaybackOptions::operator bool() const
-{
-    if (options.empty())
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
-}
-
-PlaybackOptions operator| (const PlaybackOptions& fst, const PlaybackOptions& snd)
-{
-    vector<PlaybackOption> newOptions(fst.options);
-    for (auto &option : snd.options)
-    {
-        if (count(newOptions.begin(), newOptions.end(), option) == 0)
-	{
-	    newOptions.push_back(option);
-	}
-    }
-
-    return PlaybackOptions(newOptions);
-}
-
-PlaybackOptions operator& (const PlaybackOptions& fst, const PlaybackOptions& snd)
-{
-    vector<PlaybackOption> newOptions;
-    for (auto &option : fst.options)
-    {
-	if (count(snd.options.begin(), snd.options.end(), option) > 0)
-	{
-	    newOptions.push_back(option);
-	}
-    }
-
-    return PlaybackOptions(newOptions);
-}
-
-
 CommandPLAY::CommandPLAY(const deque<shared_ptr<Track>>& tracks, PlaybackOptions options) :
     Command(CommandType::play),
     tracks(new deque<shared_ptr<Track>>(tracks.begin(), tracks.end())),

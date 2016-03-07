@@ -3,6 +3,7 @@
 #include "data.hpp"
 #include "decode.hpp"
 #include "playlist.hpp"
+#include "options.hpp"
 
 #include <ao/ao.h>
 #include <queue>
@@ -22,7 +23,13 @@ class CommandNEXT;
 class CommandEXIT;
 class CommandPLAY;
 
-class PlaybackOptions;
+enum class PlaybackOption
+{
+    shuffle,
+    queue
+};
+
+using PlaybackOptions = Options<PlaybackOption>;
 
 namespace play
 {
@@ -134,32 +141,6 @@ class CommandEXIT : public Command
     public:
 	CommandEXIT() : Command(CommandType::exit) {};
 };
-
-// PLAYBACK OPTIONS
-enum class PlaybackOption
-{
-    shuffle,
-    queue
-};
-
-class PlaybackOptions
-{
-    friend PlaybackOptions operator| (const PlaybackOptions& fst, const PlaybackOptions& snd);
-    friend PlaybackOptions operator& (const PlaybackOptions& fst, const PlaybackOptions& snd);
-
-    std::vector<PlaybackOption> options;
-
-    public:
-    PlaybackOptions(std::vector<PlaybackOption> options);
-    PlaybackOptions(std::initializer_list<PlaybackOption> options);
-    PlaybackOptions(const PlaybackOptions& copy);
-    PlaybackOptions(PlaybackOption option);
-
-    operator bool() const;
-};
-
-PlaybackOptions operator| (const PlaybackOptions& fst, const PlaybackOptions& snd);
-PlaybackOptions operator& (const PlaybackOptions& fst, const PlaybackOptions& snd);
 
 // PLAYBACK COMMAND
 class CommandPLAY : public Command
