@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <stdio.h>
+#include <iostream>
 
 using namespace std;
 using namespace data;
@@ -70,8 +71,13 @@ Track::Track(const string& file)
     codec = nullptr;
 
     open();
+
+    duration = chrono::seconds((container->streams[streamID]->duration * container->streams[streamID]->time_base.num) / container->streams[streamID]->time_base.den);
+    numSamples = (duration * codecContext->sample_rate).count();
+
     decodeMetadata();
     sampleFormat = getSampleFormat(this);
+
     close();
 }
 

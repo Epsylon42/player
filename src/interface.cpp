@@ -9,6 +9,7 @@
 #include <iostream>
 #include <functional>
 #include <initializer_list>
+#include <chrono>
 
 using namespace std;
 using namespace interface;
@@ -477,8 +478,17 @@ void PlaybackControlWindow::playbackWindowThread()
 	    }
 	    wattroff(window, A_BOLD);
 	    
-	    int time = play::NowPlaying::frame;
-	    wprintw(window, "%d", time);
+	    {
+		//TODO: make it work
+                using namespace chrono;
+
+		shared_ptr<Track>& track = play::NowPlaying::track;
+
+		seconds sec(play::NowPlaying::sample / track->codecContext->sample_rate);
+		minutes min(duration_cast<minutes>(sec));
+
+		wprintw(window, "%d:%d / %d:%d", min, sec, duration_cast<minutes>(track->duration), duration_cast<seconds>(track->duration).count()%60);
+	    }
 
 
 	    wmove(window, 3, 1);

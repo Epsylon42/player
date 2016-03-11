@@ -15,7 +15,8 @@ using namespace std;
 using namespace play;
 
 shared_ptr<Track> play::NowPlaying::track;
-int               play::NowPlaying::frame = 0;
+size_t            play::NowPlaying::frame  = 0;
+size_t            play::NowPlaying::sample = 0;
 bool              play::NowPlaying::playing = false;
 
 
@@ -199,6 +200,7 @@ void playTrack(shared_ptr<Track> track)
 			exit(1);
 		}
 		NowPlaying::frame++;
+		NowPlaying::sample += frame->nb_samples;
 	    } 
 	}
         av_free_packet(&packet);
@@ -445,4 +447,5 @@ void NowPlaying::reset()
 {
     track.reset();
     frame = 0;
+    sample = 0;
 }

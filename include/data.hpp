@@ -13,6 +13,7 @@ extern "C"
 #include <deque>
 #include <thread>
 #include <memory>
+#include <chrono>
 
 struct Track;
 struct Album;
@@ -39,6 +40,9 @@ struct Track
     ao_sample_format sampleFormat;
     int               streamID;
     bool opened = false;
+    std::chrono::seconds duration;
+    size_t numSamples;
+    
 
     std::string name;
     std::string artistName;

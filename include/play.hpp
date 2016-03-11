@@ -52,7 +52,8 @@ namespace play
     namespace NowPlaying
     {
 	extern std::shared_ptr<Track> track;
-	extern int frame;
+	extern size_t frame;
+	extern size_t sample;
 	extern bool playing;
 
 	void reset();
