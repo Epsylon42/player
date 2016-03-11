@@ -71,18 +71,15 @@ void playTrack(shared_ptr<Track> track)
     av_init_packet(&packet);
 
     int bufSize = 9999; //TODO: find the right way to get buffer size
-    uint8_t* buffer = new uint8_t[bufSize];
-    packet.data = buffer;
-    packet.size = bufSize;
+    //uint8_t* buffer = new uint8_t[bufSize];
+    //packet.data = buffer;
+    //packet.size = bufSize;
 
     uint8_t* samples = new uint8_t[bufSize];
 
     AVFormatContext* container = track->container;
     AVCodecContext*  cctx      = track->codecContext;
     int streamID               = track->streamID;
-
-    int frameFinished = 0;
-    int planeSize = 0;
 
     AVFrame* frame = av_frame_alloc();
 
@@ -103,7 +100,7 @@ void playTrack(shared_ptr<Track> track)
 	    track->close();
 
 	    delete [] samples;
-	    delete [] buffer;
+	    //delete [] buffer;
 
 	    throw;
 	}
@@ -127,6 +124,9 @@ void playTrack(shared_ptr<Track> track)
 
 	if(packet.stream_index==streamID)
 	{
+	    int frameFinished = 0;
+	    int planeSize = 0;
+
 	    avcodec_decode_audio4(cctx, frame, &frameFinished, &packet);
 	    av_samples_get_buffer_size(&planeSize, cctx->channels,
 		    frame->nb_samples,
@@ -213,7 +213,7 @@ void playTrack(shared_ptr<Track> track)
     track->close();
 
     delete [] samples;
-    delete [] buffer;
+    //delete [] buffer;
 }
 
 void startPlayback(shared_ptr<Artist> artist, PlaybackOptions options)
