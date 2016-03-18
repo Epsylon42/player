@@ -12,7 +12,7 @@ ao_sample_format getSampleFormat(Track* track)
     {
 	case AV_SAMPLE_FMT_U8:
 	case AV_SAMPLE_FMT_U8P:
-	    sampleFormat.bits = 8;
+	    sampleFormat.bits = 16;
 	    break;
 	case AV_SAMPLE_FMT_S16:
 	case AV_SAMPLE_FMT_S16P:
@@ -22,14 +22,12 @@ ao_sample_format getSampleFormat(Track* track)
 	case AV_SAMPLE_FMT_S32P:
 	    sampleFormat.bits = 32;
 	    break;
-	case AV_SAMPLE_FMT_DBL:
 	case AV_SAMPLE_FMT_FLT:
-	case AV_SAMPLE_FMT_DBLP:
 	case AV_SAMPLE_FMT_FLTP:
 	    sampleFormat.bits = 16;
 	    break;
 	default:
-	    cout << "Unknown number of bits per sample" << endl;
+	    cout << "Unsupported format" << endl;
 	    exit(1);
     }
 

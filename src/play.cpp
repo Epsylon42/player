@@ -72,9 +72,6 @@ void playTrack(shared_ptr<Track> track)
     av_init_packet(&packet);
 
     int bufSize = 9999; //TODO: find the right way to get buffer size
-    //uint8_t* buffer = new uint8_t[bufSize];
-    //packet.data = buffer;
-    //packet.size = bufSize;
 
     uint8_t* samples = new uint8_t[bufSize];
 
@@ -101,7 +98,6 @@ void playTrack(shared_ptr<Track> track)
 	    track->close();
 
 	    delete [] samples;
-	    //delete [] buffer;
 
 	    throw;
 	}
@@ -196,7 +192,7 @@ void playTrack(shared_ptr<Track> track)
 			break;
 
 		    default:
-			cout << "PCM type not supported" << endl; //FIXME: also this 
+			cout << "PCM type not supported" << endl; //FIXME: also this (see above)
 			exit(1);
 		}
 		NowPlaying::frame++;
@@ -215,7 +211,6 @@ void playTrack(shared_ptr<Track> track)
     track->close();
 
     delete [] samples;
-    //delete [] buffer;
 }
 
 void startPlayback(shared_ptr<Artist> artist, PlaybackOptions options)
