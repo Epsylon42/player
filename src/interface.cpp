@@ -1,5 +1,6 @@
 #include "interface.hpp"
 #include "play.hpp"
+#include "log.hpp"
 
 #include "ncurses_wrapper.hpp"
 
@@ -7,9 +8,11 @@
 #include <set>
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
 #include <functional>
 #include <initializer_list>
 #include <chrono>
+#include <algorithm>
 
 using namespace std;
 using namespace interface;
@@ -17,12 +20,12 @@ using namespace interface;
 recursive_mutex interface::interfaceMutex;
 int interface::sizeX;
 int interface::sizeY;
-deque<shared_ptr<Window>> interface::windows;
+shared_ptr<ColumnWindow> interface::mainWindow;
 shared_ptr<ArtistsListingWindow>  interface::artistsWindow;
 shared_ptr<AlbumsListingWindow>   interface::albumsWindow;
 shared_ptr<TracksListingWindow>   interface::tracksWindow;
 shared_ptr<PlaybackControlWindow> interface::playbackWindow;
-shared_ptr<Window> interface::selectedWindow;
+/* shared_ptr<Window> interface::selectedWindow; */
 
 
 void initInterface()
@@ -35,16 +38,24 @@ void initInterface()
     sizeX = getmaxx(stdscr);
     sizeY = getmaxy(stdscr);
 
-    tracksWindow = make_shared<TracksListingWindow>(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX, BORDERS_ALL, getTracks());
-    albumsWindow = make_shared<AlbumsListingWindow>(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2), BORDERS_ALL, getAlbums());
-    artistsWindow = make_shared<ArtistsListingWindow>(5, 0, sizeY/2+1-5, sizeX/2, BORDERS_ALL, data::artistsDeque);
-    playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 5, sizeX/2, BORDERS_ALL);
+    mainWindow = make_shared<ColumnWindow>(0, 0, sizeY, sizeX);
 
-    selectedWindow =  tracksWindow;
-    windows.push_back(artistsWindow);
-    windows.push_back(albumsWindow);
-    windows.push_back(tracksWindow);
-    windows.push_back(playbackWindow);
+    tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, getTracks());
+    albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, getAlbums());
+    artistsWindow = make_shared<ArtistsListingWindow>(0, 0, 0, 0, data::artistsDeque);
+    playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 0, 0);
+
+    auto line1 = make_shared<LineWindow>(0, 0, 0, 0);
+    {
+        auto line1Col1 = make_shared<ColumnWindow>(0, 0, 0, 0);
+        line1Col1->addWindow(playbackWindow);
+        line1Col1->addWindow(artistsWindow);
+        line1->addWindow(line1Col1);
+    }
+    line1->addWindow(albumsWindow);
+
+    mainWindow->addWindow(line1);
+    mainWindow->addWindow(tracksWindow);
 }
 
 void interfaceLoop()
@@ -52,19 +63,18 @@ void interfaceLoop()
     initInterface();
     do
     {
-	updateWindows();
+        updateWindows();
     } while (readKey());
     endInterface();
 }
 
 void endInterface()
 {
-    selectedWindow.reset();
     tracksWindow.reset();
     albumsWindow.reset();
     artistsWindow.reset();
     playbackWindow.reset();
-    windows.clear();
+    mainWindow.reset();
 
     endwin();
 }
@@ -72,91 +82,80 @@ void endInterface()
 void updateWindows()
 {
     //usleep(10000); 
+
     int newSizeX = getmaxx(stdscr);
     int newSizeY = getmaxy(stdscr);
     if (newSizeX != sizeX || newSizeY != sizeY)
     {
-	sizeX = newSizeX;
-	sizeY = newSizeY;
-	tracksWindow->reshapeWindow(sizeY/2+1, 0, sizeY/2-1+(sizeY%2), sizeX);
-	albumsWindow->reshapeWindow(0, sizeX/2, sizeY/2+1, sizeX/2+(sizeX%2));
-	artistsWindow->reshapeWindow(5, 0, sizeY/2+1-5, sizeX/2);
-	playbackWindow->reshapeWindow(0, 0, 5, sizeX/2);
-	clear();
-	refresh();
+        sizeX = newSizeX;
+        sizeY = newSizeY;
+        mainWindow->reshapeWindow(0, 0, sizeY, sizeX);
+        clear();
+        refresh();
     }
 
-    for (auto window : windows)
-    {
-	window->update();
-    }
+    mainWindow->update();
 }
 
 void fullRefresh()
 {
     clear();
-    for (auto window : windows)
-    {
-	wclear(window->window);
-    }
+    wclear(mainWindow->window);
     refresh();
+
+    mainWindow->update();
 }
 
 //returns false if pressed exit key
 bool readKey()
 { 
-    int ch = wgetch(selectedWindow->window.get());
+    int ch = wgetch(mainWindow->window.get());
     switch (ch)
     {
-	case ERR:
-	    break;
-	case 'Q':
-	    return false;
-	    break;
-	case 'R':
-	    fullRefresh();
-	    break;
-	case 'a':
-	    selectedWindow = artistsWindow;
-	    break;
-	case 'l': // a(L)bums
-	    selectedWindow = albumsWindow;
-	    break;
-	case 't':
-	    selectedWindow = tracksWindow;
-	    break;
-	case 'P':
-	    selectedWindow = playbackWindow;
-	    break;
-	case ' ':
-	    sendPlaybackCommand(new CommandTOGGLE());
-	    break;
-	case 'E': // (E)nd
-	    sendPlaybackCommand(new CommandSTOP());
-	    break;
-	case '<':
-	    sendPlaybackCommand(new CommandPREVIOUS());
-	    break;
-	case '>':
-	    sendPlaybackCommand(new CommandNEXT());
-	    break;
-	default:
-	    selectedWindow->processKey(ch);
+        case ERR:
+            break;
+        case 'Q':
+            return false;
+            break;
+        case 'R':
+            fullRefresh();
+            break;
+        case ' ':
+            // TODO: override operator new to return static value.
+            sendPlaybackCommand(new CommandTOGGLE());
+            break;
+        case 'E': // (E)nd
+            sendPlaybackCommand(new CommandSTOP());
+            break;
+        case '<':
+            sendPlaybackCommand(new CommandPREVIOUS());
+            break;
+        case '>':
+            sendPlaybackCommand(new CommandNEXT());
+            break;
+        default:
+            {
+                if (auto locked = mainWindow->getSelected().lock())
+                {
+                    locked->processKey(ch);
+                }
+            }
     }
     return true;
 }
 
-Window::Window(int startY, int startX, int nlines, int ncols, char borders) :
-    startX(startX), startY(startY), nlines(nlines), ncols(ncols)
+Window::Window(int startY, int startX, int nlines, int ncols) :
+    startX(startX), startY(startY), nlines(nlines), ncols(ncols),
+    window(newwin(nlines, ncols, startY, startX)), 
+    parent()
 {
-    window.reset(newwin(nlines, ncols, startY, startX));
     // nodelay(window, true);
     keypad(window.get(), true);
+}
 
-    borderTop    = borders & BORDER_TOP;
-    borderLeft   = borders & BORDER_LEFT;
-    borderRight  = borders & BORDER_RIGHT;
-    borderBottom = borders & BORDER_BOTTOM;
+weak_ptr<Window> Window::getSelected()
+{
+    return shared_from_this();
 }
 
 Window::~Window()
@@ -164,42 +163,7 @@ Window::~Window()
     delwin(window.release());
 }
 
-void Window::displayBorders()
-{
-    char frame;
-    if (this == selectedWindow.get())
-    {
-	frame = '#';
-    }
-    else
-    {
-	frame = '+';
-    }
-
-    for (int i = 0; i < ncols; i++)
-    {
-	if (borderTop)
-	{
-	    mvwprintw(window, 0, i, "%c", frame);
-	}
-	if (borderBottom)
-	{
-	    mvwprintw(window, nlines-1, i, "%c", frame);
-	}
-    }
-    for (int i = 0; i < nlines; i++)
-    {
-	if (borderLeft)
-	{
-	    mvwprintw(window, i, 0, "%c", frame);
-	}
-	if (borderRight)
-	{
-	    mvwprintw(window, i, ncols-1, "%c", frame);
-	}
-    }
-}
-
+// TODO: add option without update, clear, etc.
 void Window::reshapeWindow(int newY, int newX, int newLines, int newColumns)
 {
     startX = newX;
@@ -207,8 +171,8 @@ void Window::reshapeWindow(int newY, int newX, int newLines, int newColumns)
     nlines = newLines;
     ncols = newColumns;
 
-    mvwin(window, startY, startX);
     wresize(window, nlines, ncols);
+    mvwin(window, startY, startX);
 
     afterReshape();
     wclear(window);
@@ -217,16 +181,279 @@ void Window::reshapeWindow(int newY, int newX, int newLines, int newColumns)
 
 void Window::update()
 {
-    displayBorders();
-
-    for (auto win : subWindows)
-    {
-	win->update();
-    }
-
     interfaceMutex.lock();
     wrefresh(window);
     interfaceMutex.unlock();
+}
+
+void Window::processKey(int ch)
+{
+    switch(ch)
+    {
+        case 'h':
+        case 'j':
+        case 'k':
+        case 'l':
+            {
+                if (auto locked = parent.lock())
+                {
+                    locked->processKey(ch);
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+weak_ptr<Window> Window::getParent() const
+{
+    return parent;
+}
+
+EmptyWindow::EmptyWindow(int startY, int startX, int nlines, int ncols) :
+    Window(startY, startX, nlines, ncols) {}
+
+void EmptyWindow::update() 
+{
+    /* wmove(window, 0, 0); */
+    /* wclrtoeol(window); */
+    /* wprintw(window, "st: %d", nlines); */
+    mvwprintw(window, 0, 0, "st: %d", nlines);
+    for (int i = 1; i < nlines; i++)
+    {
+        /* wmove(window, i, 0); */
+        /* wclrtoeol(window); */
+        /* wprintw(window, "%d", i); */
+        mvwprintw(window, i, 0, "%d", i);
+    }
+    /* wmove(window, nlines-1, 0); */
+    /* wclrtoeol(window); */
+    /* wprintw(window, "end"); */
+    /* mvwprintw(window, nlines-1, 0, "end"); */
+    Window::update();
+}
+void EmptyWindow::processKey(int ch) 
+{
+    Window::processKey(ch);
+}
+
+void EmptyWindow::afterReshape() {}
+
+
+MetaWindow::MetaWindow(int startY, int startX, int nlines, int ncols) :
+    Window(startY, startX, nlines, ncols)
+{
+    selectedWindow = windows.begin();
+}
+
+weak_ptr<Window> MetaWindow::getSelected() 
+{
+    if(selectedWindow != windows.end())
+    {
+        return (*selectedWindow)->getSelected();
+    }
+    else
+    {
+        return {};
+    }
+}
+
+void MetaWindow::addWindow(shared_ptr<Window> win)
+{
+    float sum = 0;
+    for(auto &e : quotients)
+    {
+        e *= static_cast<float>(quotients.size())/(quotients.size()+1);
+        sum += e;
+    }
+
+    win->parent = shared_from_this();
+    windows.push_back(win);
+    quotients.push_back(1-sum);
+    recalculateSizes();
+
+    update();
+}
+
+ColumnWindow::ColumnWindow(int startY, int startX, int nlines, int ncols) :
+    MetaWindow(startY, startX, nlines, ncols) {}
+
+void ColumnWindow::update()
+{
+    int border = 0;
+    for (auto &win : windows)
+    {
+        win->update();
+        border += win->nlines;
+        if (border < nlines)
+        {
+            for (int i = 0; i < ncols; i++)
+            {
+                mvwprintw(window, border, i, "-");
+            }
+        }
+        border++;
+    }
+
+    Window::update();
+}
+
+void ColumnWindow::processKey(int ch)
+{
+    switch (ch)
+    {
+        case 'j':
+            selectedWindow++;
+            if(selectedWindow == windows.end())
+            {
+               selectedWindow--;
+               if (auto locked = parent.lock())
+               {
+                    locked->processKey(ch);
+               }
+            }
+            break;
+
+        case 'k':
+            if(selectedWindow == windows.begin())
+            {
+                if (auto locked = parent.lock())
+                {
+                    locked->processKey(ch);
+                }
+            }
+            else
+            {
+                selectedWindow--;
+            }
+            break;
+
+        case 'h':
+        case 'l':
+            if (auto locked = parent.lock())
+            {
+                locked->processKey(ch);
+            }
+            break;
+
+        default:
+            (*selectedWindow)->processKey(ch);
+            break;
+    }
+}
+
+void ColumnWindow::afterReshape()
+{
+    recalculateSizes();
+    update();
+}
+
+void ColumnWindow::recalculateSizes() 
+{
+    int y = 0;
+    auto w = windows.begin();
+    for(auto e = quotients.begin(); e != quotients.end() && w != windows.end(); e++, w++)
+    {
+        int winLines = (*e) * nlines;
+        if(y + winLines > nlines)
+        {
+            winLines = nlines - y;
+        }
+        (*w)->reshapeWindow(y, startX, winLines, ncols);
+        y += (*w)->nlines + 1;
+    }
+}
+
+
+LineWindow::LineWindow(int startY, int startX, int nlines, int ncols) :
+    MetaWindow(startY, startX, nlines, ncols) {}
+
+void LineWindow::update()
+{
+    int border = 0;
+    for (auto &win : windows)
+    {
+        win->update();
+        border += win->ncols;
+        if (border < ncols)
+        {
+            for (int i = 0; i < nlines; i++)
+            {
+                mvwprintw(window, i, border, "|");
+            }
+        }
+        border++;
+    }
+
+    Window::update();
+}
+
+void LineWindow::processKey(int ch)
+{
+    switch (ch)
+    {
+        case 'l':
+            selectedWindow++;
+            if(selectedWindow == windows.end())
+            {
+                selectedWindow--;
+                if (auto locked = parent.lock())
+                {
+                    locked->processKey(ch);
+                }
+            }
+            break;
+
+        case 'h':
+            if(selectedWindow == windows.begin())
+            {
+                if (auto locked = parent.lock())
+                {
+                    locked->processKey(ch);
+                }
+            }
+            else
+            {
+                selectedWindow--;
+            }
+            break;
+
+        case 'j':
+        case 'k':
+            if (auto locked = parent.lock())
+            {
+                locked->processKey(ch);
+            }
+            break;
+
+        default:
+            (*selectedWindow)->processKey(ch);
+            break;
+    }
+}
+
+void LineWindow::afterReshape()
+{
+    recalculateSizes();
+    update();
+}
+
+void LineWindow::recalculateSizes() 
+{
+    int x = 0;
+    auto w = windows.begin();
+    for(auto e = quotients.begin(); e != quotients.end() && w != windows.end(); e++, w++)
+    {
+        int winCols = (*e) * ncols;
+        if(x + winCols > ncols)
+        {
+            winCols = ncols - x;
+        }
+        (*w)->reshapeWindow(startY, x, nlines, winCols);
+        x += (*w)->ncols + 1;
+    }
 }
 
 
@@ -237,8 +464,8 @@ void DequeListingWindow<DequeType>::afterReshape()
 }
 
 template< typename DequeType >
-DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, deque<DequeType> data) :
-    Window(startY, startX, nlines, ncols, borders), data(data)
+DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, deque<DequeType> data) :
+    Window(startY, startX, nlines, ncols), data(data)
 {
     cursorPos   = this->data.begin();
     screenStart = this->data.begin();
@@ -255,25 +482,26 @@ DequeListingWindow<DequeType>::~DequeListingWindow()
 void DequeListingWindow<DequeType>::update()
 {
     auto p = screenStart;
-    for (int i = 0; i < nlines-2; i++)
+    for (int i = 0; i < nlines; i++)
     {
-	if (p == data.end())
-	{
-	    break;
-	}
-	wmove(window, i+1, 1);
-	wclrtoeol(window);
-	if (p == cursorPos)
-	{
-	    wattron(window, A_REVERSE);
-	    if (this == selectedWindow.get())
-	    {
-		wattron(window, A_BOLD);
-	    }
-	}
-	wprintw(window, "%s", getName(p).c_str());
-	wattroff(window, A_REVERSE | A_BOLD);
-	p++;
+        if (p == data.end())
+        {
+            break;
+        }
+        wmove(window, i, 1);
+        wclrtoeol(window);
+        if (p == cursorPos)
+        {
+            wattron(window, A_REVERSE);
+
+            if (this == mainWindow->getSelected().lock().get())
+            {
+                wattron(window, A_BOLD);
+            }
+        }
+        wprintw(window, "%s", getName(p).c_str());
+        wattroff(window, A_REVERSE | A_BOLD);
+        p++;
     }
 
     Window::update();
@@ -284,31 +512,40 @@ void DequeListingWindow<DequeType>::processKey(int ch)
 {
     switch (ch)
     {
-	case KEY_UP:
-	    if (cursorPos != data.begin())
-	    {
-		if (cursorPos == screenStart)
-		{
-		    screenStart--;
-		}
-		cursorPos--;
-		select();
-	    }
-	    break;
-	case KEY_DOWN:
-	    if (cursorPos != data.end()-1)
-	    {
-		if (cursorPos == screenStart+nlines-3)
-		{
-		    screenStart++;
-		}
-		cursorPos++;
-		select();
-	    }
-	    break;
-	default:
-	    press(ch);
-	    break;
+        case KEY_UP:
+            if (cursorPos != data.begin())
+            {
+                if (cursorPos == screenStart)
+                {
+                    screenStart--;
+                }
+                cursorPos--;
+                select();
+            }
+            break;
+
+        case KEY_DOWN:
+            if (cursorPos != data.end()-1)
+            {
+                if (cursorPos == screenStart+nlines-1)
+                {
+                    screenStart++;
+                }
+                cursorPos++;
+                select();
+            }
+            break;
+
+        case 'h':
+        case 'j':
+        case 'k':
+        case 'l':
+            Window::processKey(ch);
+            break;
+            
+        default:
+            press(ch);
+            break;
     }
 }
 
@@ -343,14 +580,14 @@ void TracksListingWindow::press(int key)
     set<PlaybackOption> options;
     switch (key)
     {
-	case 's':
-	    options.insert(PlaybackOption::queue);
-	case 'S':
-	    startPlayback(*cursorPos, options);
-	    break;
+        case 's':
+            options.insert(PlaybackOption::queue);
+        case 'S':
+            startPlayback(*cursorPos, options);
+            break;
 
-	default:
-	    break;
+        default:
+            break;
     }
 }
 
@@ -364,14 +601,14 @@ void AlbumsListingWindow::press(int key)
     set<PlaybackOption> options = {PlaybackOption::shuffle};
     switch (key)
     {
-	case 's':
-	    options.insert(PlaybackOption::queue);
-	case 'S':
-	    startPlayback(*cursorPos, options);
-	    break;
+        case 's':
+            options.insert(PlaybackOption::queue);
+        case 'S':
+            startPlayback(*cursorPos, options);
+            break;
 
-	default:
-	    break;
+        default:
+            break;
     }
 }
 
@@ -385,19 +622,19 @@ void ArtistsListingWindow::press(int key)
     set<PlaybackOption> options = {PlaybackOption::shuffle};
     switch (key)
     {
-	case 's':
-	    options.insert(PlaybackOption::queue);
-	case 'S':
-	    startPlayback(*cursorPos, options);
-	    break;
+        case 's':
+            options.insert(PlaybackOption::queue);
+        case 'S':
+            startPlayback(*cursorPos, options);
+            break;
 
-	default:
-	    break;
+        default:
+            break;
     }
 }
 
-PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders) :
-    Window(startY, startX, nlines, ncols, borders),
+PlaybackControlWindow::PlaybackControlWindow(int startY, int startX, int nlines, int ncols) :
+    Window(startY, startX, nlines, ncols),
     stopThread(false),
     winThread(mem_fn(&PlaybackControlWindow::playbackWindowThread), this) {}
 
@@ -416,14 +653,14 @@ void PlaybackControlWindow::processKey(int ch)
 {
     switch (ch)
     {
-	case KEY_RIGHT:
-	    rewindForward();
-	    break;
-	case KEY_LEFT:
-	    rewindBackward();
-	    break;
-	default:
-	    break;
+        case KEY_RIGHT:
+            rewindForward();
+            break;
+        case KEY_LEFT:
+            rewindBackward();
+            break;
+        default:
+            Window::processKey(ch);
     }
 }
 
@@ -446,66 +683,67 @@ void PlaybackControlWindow::playbackWindowThread()
 {
     while(!stopThread)
     {
-	for (int i = 1; i < nlines-1; i++)
-	{
-	    wmove(window, i, 1);
-	    wclrtoeol(window);
-	}
+        for (int i = 0; i < nlines; i++)
+        {
+            wmove(window, i, 1);
+            wclrtoeol(window);
+        }
 
-	if (playbackInProcess() && play::NowPlaying::track)
-	{
-	    wmove(window, 1, 1);
-	    wclrtoeol(window);
+        if (playbackInProcess() && play::NowPlaying::track)
+        {
+            wmove(window, 0, 1);
+            wclrtoeol(window);
 
-	    wattron(window, A_BOLD);
-	    wprintw(window, "Track: ");
-	    wattroff(window, A_BOLD);
+            wattron(window, A_BOLD);
+            wprintw(window, "Track: ");
+            wattroff(window, A_BOLD);
 
-	    wprintw(window, "%s", play::NowPlaying::track->name.c_str());
+            wprintw(window, "%s", play::NowPlaying::track->name.c_str());
 
 
-	    wmove(window, 2, 1);
-	    wclrtoeol(window);
-	    
-	    wattron(window, A_BOLD);
-	    if (play::playbackPause)
-	    {
-		wprintw(window, "Paused:  ");
-	    }
-	    else
-	    {
-		wprintw(window, "Playing: ");
-	    }
-	    wattroff(window, A_BOLD);
-	    
-	    {
-		//TODO: make it work
+            wmove(window, 1, 1);
+            wclrtoeol(window);
+
+            wattron(window, A_BOLD);
+            if (play::playbackPause)
+            {
+                wprintw(window, "Paused:  ");
+            }
+            else
+            {
+                wprintw(window, "Playing: ");
+            }
+            wattroff(window, A_BOLD);
+
+            {
+                //FIXME: stops showing correct time after two minutes
+
                 using namespace chrono;
 
-		shared_ptr<Track>& track = play::NowPlaying::track;
+                shared_ptr<Track>& track = play::NowPlaying::track;
 
-		seconds sec(play::NowPlaying::sample / track->codecContext->sample_rate);
-		minutes min(duration_cast<minutes>(sec));
+                seconds sec(play::NowPlaying::sample / track->codecContext->sample_rate);
+                minutes min(duration_cast<minutes>(sec));
 
-		wprintw(window, "%d:%d / %d:%d", min, sec, duration_cast<minutes>(track->duration), duration_cast<seconds>(track->duration).count()%60);
-	    }
-
-
-	    wmove(window, 3, 1);
-	    wclrtoeol(window);
-
-	    wattron(window, A_BOLD);
-	    wprintw(window, "Queued: ");
-	    wattroff(window, A_BOLD);
-	    wprintw(window, "%d", play::playbackQueue.size());
+                wprintw(window, "%d:%d / %d:%d", min, sec, duration_cast<minutes>(track->duration), duration_cast<seconds>(track->duration).count()%60);
+            }
 
 
-	    Window::update();
-	    usleep(10000);
-	}
-	else
-	{
-	    usleep(500000);
-	}
+            wmove(window, 2, 1);
+            wclrtoeol(window);
+
+            wattron(window, A_BOLD);
+            wprintw(window, "Queued: ");
+            wattroff(window, A_BOLD);
+            wprintw(window, "%d", play::playbackQueue.size());
+
+
+            Window::update();
+            usleep(10000);
+        }
+        else
+        {
+            usleep(500000);
+        }
     }
 }

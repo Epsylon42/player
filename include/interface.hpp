@@ -6,19 +6,14 @@
 #include <mutex>
 #include <thread>
 #include <utility>
+#include <functional>
 
 #include "data.hpp"
 
-constexpr char BORDERS_ALL        = 0b00001111;
-constexpr char BORDER_TOP         = 0b00001000;
-constexpr char BORDER_LEFT        = 0b00000100;
-constexpr char BORDER_RIGHT       = 0b00000010;
-constexpr char BORDER_BOTTOM      = 0b00000001;
-constexpr char BORDERS_NONE       = 0b00000000;
-constexpr char BORDERS_HORIZONTAL = 0b00001001;
-constexpr char BORDERS_VERTICAL   = 0b00000110;
-
 class Window;
+class EmptyWindow;
+class MetaWindow;
+class ColumnWindow;
 template< typename DequeType > class DequeListingWindow;
 class TracksListingWindow;
 class ArtistsListingWindow;
@@ -30,7 +25,7 @@ namespace interface
     extern std::recursive_mutex interfaceMutex;
     extern int sizeX;
     extern int sizeY;
-    extern std::deque<std::shared_ptr<Window>> windows;
+    extern std::shared_ptr<ColumnWindow> mainWindow;
     extern std::shared_ptr<ArtistsListingWindow>  artistsWindow;
     extern std::shared_ptr<AlbumsListingWindow>   albumsWindow;
     extern std::shared_ptr<TracksListingWindow>   tracksWindow;
@@ -45,40 +40,98 @@ void updateWindows();
 void fullRefresh();
 bool readKey();
 
-class Window
+class Window : public std::enable_shared_from_this<Window>
 {
+    friend class MetaWindow;
+
     public:
 	int startX;
 	int startY;
 	int nlines;
 	int ncols;
 	std::unique_ptr<WINDOW> window;
-	std::deque<std::shared_ptr<Window>> subWindows;
-	std::shared_ptr<Window> selectedSubWindow;
 
-	Window(int startY, int startX, int nlines, int ncols, char borders);
+	Window(int startY, int startX, int nlines, int ncols);
 
 	void reshapeWindow(int newY, int newX, int newLines, int newColumns);
 
+    std::weak_ptr<Window> getParent() const;
+
+    // It would be better for everyone if this function is called on hjkl press in all its overrides
+    // except for meta windows and such
+    // it passes window switch keys to parent window
+	virtual void processKey(int ch);
+
+    // This REALLY must be called from all overrides
 	virtual void update();
-	virtual void processKey(int ch) = 0;
+
+    virtual std::weak_ptr<Window> getSelected();
 
 	virtual ~Window();
 
     protected:
-	bool borderTop;
-	bool borderLeft;
-	bool borderRight;
-	bool borderBottom;
-
-	void displayBorders();
+    std::weak_ptr<Window> parent;
 
 	virtual void afterReshape() = 0;
 };
 
 
+class EmptyWindow : public Window
+{
+    public:
+        EmptyWindow(int startY, int startX, int nlines, int ncols);
 
-// DequeType !MUST! be of std::deque<something> type
+	virtual void update()           override;
+	virtual void processKey(int ch) override;
+
+    protected:
+	virtual void afterReshape()     override;
+};
+
+
+class MetaWindow : public Window
+{
+    public:
+        MetaWindow(int startY, int startX, int nlines, int ncols);
+
+        virtual void addWindow(std::shared_ptr<Window> win);
+        virtual std::weak_ptr<Window> getSelected() override;
+
+    protected:
+        std::deque<float> quotients;
+        std::deque<std::shared_ptr<Window>> windows;
+        decltype(windows)::iterator selectedWindow;
+
+        virtual void recalculateSizes() = 0;
+};
+
+class ColumnWindow : public MetaWindow
+{
+    public:
+        ColumnWindow(int startY, int startX, int nlines, int ncols);
+
+	virtual void update()                               override;
+	virtual void processKey(int ch)                     override;
+
+    protected:
+    virtual void afterReshape()                         override;
+    virtual void recalculateSizes()                     override;
+};
+
+class LineWindow : public MetaWindow
+{
+    public:
+        LineWindow(int startY, int startX, int nlines, int ncols);
+
+	virtual void update()                               override;
+	virtual void processKey(int ch)                     override;
+
+    protected:
+	virtual void afterReshape()     override;
+    virtual void recalculateSizes() override;
+};
+
+
 template< typename DequeType > 
 class DequeListingWindow : public Window
 {
@@ -86,7 +139,7 @@ class DequeListingWindow : public Window
 	typename std::deque<DequeType>::iterator cursorPos;
 	typename std::deque<DequeType>::iterator screenStart;
 
-	DequeListingWindow(int startY, int startX, int nlines, int ncols, char borders, std::deque<DequeType> data);
+	DequeListingWindow(int startY, int startX, int nlines, int ncols, std::deque<DequeType> data);
 
 	void assignNewDeque(std::deque<DequeType> newDeque);
 
@@ -161,7 +214,7 @@ class PlaybackControlWindow : public Window
 {
     friend void playbackWindowThread(PlaybackControlWindow* win);
     public:
-    PlaybackControlWindow(int startY, int startX, int nlines, int ncols, char borders);
+    PlaybackControlWindow(int startY, int startX, int nlines, int ncols);
 
     virtual void update() override;
     virtual void processKey(int ch)      override;

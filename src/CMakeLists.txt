@@ -4,10 +4,11 @@ set(SOURCES
 		 play.cpp
 		 decode.cpp
 		 interface.cpp
-		 playlist.cpp)
+         playlist.cpp
+         log.cpp)
 
 set(LIBS 	
-		ncurses
+		ncursesw
 		avcodec
 		avformat
 		avutil
