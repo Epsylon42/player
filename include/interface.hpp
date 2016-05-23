@@ -164,7 +164,7 @@ class MediaListingWindow : public DequeListingWindow<DequeType>
 {
     public:
 	template< typename ... Args >
-	    MediaListingWindow(Args... args) :
+	    MediaListingWindow(Args&&... args) :
 		DequeListingWindow<DequeType>::DequeListingWindow(std::forward<Args>(args)...) {}
 
 	virtual std::string getName(typename std::deque<DequeType>::iterator iter) const override;
@@ -176,7 +176,7 @@ class TracksListingWindow : public MediaListingWindow<std::shared_ptr<Track>>
 {
     public:
 	template< typename ... Args >
-	    TracksListingWindow(Args... args) :
+	    TracksListingWindow(Args&&... args) :
 		MediaListingWindow(std::forward<Args>(args)...) {select();}
 
     protected:
@@ -188,7 +188,7 @@ class AlbumsListingWindow : public MediaListingWindow<std::shared_ptr<Album>>
 {
     public:
 	template< typename ... Args >
-	    AlbumsListingWindow(Args... args) :
+	    AlbumsListingWindow(Args&&... args) :
 		MediaListingWindow(std::forward<Args>(args)...) {select();}
 
     protected:
@@ -200,7 +200,7 @@ class ArtistsListingWindow : public MediaListingWindow<std::shared_ptr<Artist>>
 {
     public:
 	template< typename ... Args >
-	    ArtistsListingWindow(Args... args) :
+	    ArtistsListingWindow(Args&&... args) :
 		MediaListingWindow(std::forward<Args>(args)...) {select();}
 
     protected:
