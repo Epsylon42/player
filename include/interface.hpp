@@ -26,11 +26,13 @@ namespace interface
     extern int sizeX;
     extern int sizeY;
     extern std::shared_ptr<ColumnWindow> mainWindow;
-    extern std::shared_ptr<ArtistsListingWindow>  artistsWindow;
-    extern std::shared_ptr<AlbumsListingWindow>   albumsWindow;
-    extern std::shared_ptr<TracksListingWindow>   tracksWindow;
-    extern std::shared_ptr<PlaybackControlWindow> playbackWindow;
     extern std::shared_ptr<Window> selectedWindow;
+
+	namespace DataDeques
+	{
+		extern std::deque<std::shared_ptr<Album>>  albumsDeque;
+		extern std::deque<std::shared_ptr<Track>>  tracksDeque;
+	}
 }
 
 void initInterface();
@@ -49,7 +51,7 @@ class Window : public std::enable_shared_from_this<Window>
 	int startY;
 	int nlines;
 	int ncols;
-	std::unique_ptr<WINDOW> window;
+	std::unique_ptr<WINDOW> nwindow;
 
 	Window(int startY, int startX, int nlines, int ncols);
 
@@ -139,9 +141,7 @@ class DequeListingWindow : public Window
 	typename std::deque<DequeType>::iterator cursorPos;
 	typename std::deque<DequeType>::iterator screenStart;
 
-	DequeListingWindow(int startY, int startX, int nlines, int ncols, std::deque<DequeType> data);
-
-	void assignNewDeque(std::deque<DequeType> newDeque);
+	DequeListingWindow(int startY, int startX, int nlines, int ncols, std::deque<DequeType>& data);
 
 	virtual void update() override;
 	virtual void processKey(int ch)      override;
@@ -149,7 +149,9 @@ class DequeListingWindow : public Window
 	virtual ~DequeListingWindow()        override;
 
     protected:
-	std::deque<DequeType> data;
+	std::deque<DequeType>& data;
+
+    bool validateIterator(typename std::deque<DequeType>::iterator iter) const;
 
 	virtual void select() = 0;
 	virtual void press(int key)  = 0;
