@@ -6,7 +6,6 @@
 
 #include <vector>
 #include <set>
-#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <functional>
@@ -81,8 +80,6 @@ void endInterface()
 
 void updateWindows()
 {
-    //usleep(10000); 
-
     int newSizeX = getmaxx(stdscr);
     int newSizeY = getmaxy(stdscr);
     if (newSizeX != sizeX || newSizeY != sizeY)
@@ -305,10 +302,10 @@ void ColumnWindow::processKey(int ch)
     switch (ch)
     {
         case 'j':
-            selectedWindow++;
+            ++selectedWindow;
             if(selectedWindow == windows.end())
             {
-               selectedWindow--;
+               --selectedWindow;
                if (auto locked = parent.lock())
                {
                     locked->processKey(ch);
@@ -326,7 +323,7 @@ void ColumnWindow::processKey(int ch)
             }
             else
             {
-                selectedWindow--;
+                --selectedWindow;
             }
             break;
 
@@ -354,7 +351,7 @@ void ColumnWindow::recalculateSizes()
 {
     int y = 0;
     auto w = windows.begin();
-    for(auto e = quotients.begin(); e != quotients.end() && w != windows.end(); e++, w++)
+    for(auto e = quotients.begin(); e != quotients.end() && w != windows.end(); ++e, ++w)
     {
         int winLines = (*e) * nlines;
         if(y + winLines > nlines)
@@ -395,10 +392,10 @@ void LineWindow::processKey(int ch)
     switch (ch)
     {
         case 'l':
-            selectedWindow++;
+            ++selectedWindow;
             if(selectedWindow == windows.end())
             {
-                selectedWindow--;
+                --selectedWindow;
                 if (auto locked = parent.lock())
                 {
                     locked->processKey(ch);
@@ -416,7 +413,7 @@ void LineWindow::processKey(int ch)
             }
             else
             {
-                selectedWindow--;
+                --selectedWindow;
             }
             break;
 
@@ -444,7 +441,7 @@ void LineWindow::recalculateSizes()
 {
     int x = 0;
     auto w = windows.begin();
-    for(auto e = quotients.begin(); e != quotients.end() && w != windows.end(); e++, w++)
+    for(auto e = quotients.begin(); e != quotients.end() && w != windows.end(); ++e, ++w)
     {
         int winCols = (*e) * ncols;
         if(x + winCols > ncols)
@@ -501,7 +498,7 @@ void DequeListingWindow<DequeType>::update()
         }
         wprintw(window, "%s", getName(p).c_str());
         wattroff(window, A_REVERSE | A_BOLD);
-        p++;
+        ++p;
     }
 
     Window::update();
@@ -517,9 +514,9 @@ void DequeListingWindow<DequeType>::processKey(int ch)
             {
                 if (cursorPos == screenStart)
                 {
-                    screenStart--;
+                    --screenStart;
                 }
-                cursorPos--;
+                --cursorPos;
                 select();
             }
             break;
@@ -529,9 +526,9 @@ void DequeListingWindow<DequeType>::processKey(int ch)
             {
                 if (cursorPos == screenStart+nlines-1)
                 {
-                    screenStart++;
+                    ++screenStart;
                 }
-                cursorPos++;
+                ++cursorPos;
                 select();
             }
             break;
@@ -739,11 +736,11 @@ void PlaybackControlWindow::playbackWindowThread()
 
 
             Window::update();
-            usleep(10000);
+            this_thread::sleep_for(chrono::milliseconds(100));
         }
         else
         {
-            usleep(500000);
+            this_thread::sleep_for(chrono::milliseconds(500));
         }
     }
 }

@@ -5,11 +5,14 @@
 #include <exception>
 #include <memory>
 #include <string>
-#include <stdio.h>
 #include <iostream>
+
+#include <boost/format.hpp>
 
 using namespace std;
 using namespace data;
+
+using boost::format;
 
 map<string, shared_ptr<Artist>> data::artistsMap;
 deque<shared_ptr<Artist>>       data::artistsDeque;
@@ -162,7 +165,7 @@ void Track::decodeMetadata()
 
 void Track::testPrint()
 {
-    printf("\t\t%s: %s (%s)\n", artistName.c_str(), name.c_str(), albumName.c_str());
+    cout << format("\t\t%s: %s (%s)") % artistName.c_str() % name.c_str() % albumName.c_str() << endl;
 }
 
 Album::Album(const string& name) :
@@ -195,12 +198,12 @@ void Album::addTrack(shared_ptr<Track> track)
 
 void Album::testPrint()
 {
-    printf("\tStarting to print album %s\n", name.c_str());
+    cout << format("\tStarting to print album %s\n") % name.c_str() << endl;
     for (auto track : tracksDeque)
     {
 	track->testPrint();
     }
-    printf("\tDone printing album %s\n", name.c_str());
+    cout << format("\tDone printing album %s\n") % name.c_str() << endl;
 }
 
 Artist::Artist(const string& name) :
@@ -246,10 +249,10 @@ void Artist::addTrack(shared_ptr<Track> track)
 
 void Artist::testPrint()
 {
-    printf("Starting to print artist %s\n", name.c_str());
+    cout << format("Starting to print artist %s\n") % name.c_str() << endl;
     for (auto album : albumsDeque)
     {
 	album->testPrint();
     }
-    printf("Done printing artist %s\n\n", name.c_str());
+    cout << format("Done printing artist %s\n\n") % name.c_str() << endl;
 }

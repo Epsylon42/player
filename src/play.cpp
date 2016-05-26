@@ -1,12 +1,12 @@
 #include "play.hpp"
 #include "log.hpp"
 
-#include <unistd.h>
-
 #include <iostream>
 #include <algorithm>
 #include <memory>
 #include <iterator>
+#include <thread>
+#include <chrono>
 
 #include <limits>
 #include <cstdint>
@@ -105,7 +105,7 @@ void playTrack(shared_ptr<Track> track)
 
         if (playbackPause)
         {
-            usleep(1000);
+            this_thread::sleep_for(chrono::milliseconds(10));
             continue;
         }
 
@@ -299,7 +299,7 @@ unique_ptr<deque<shared_ptr<Track>>> playbackThreadWait()
             return move(playCommand->tracks);
         }
 
-        usleep(500000);
+        this_thread::sleep_for(chrono::milliseconds(500));
     }
 }
 
