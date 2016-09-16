@@ -11,16 +11,15 @@ pkg_check_modules(NCURSES REQUIRED
     ncursesw)
 include_directories(${NCURSES_INCLUDE_DIRS})
 
-pkg_check_modules(FFMPEG REQUIRED
-    libavcodec
-    libavformat
-    libavutil)
-include_directories(${FFMPEG_INCLUDE_DIRS})
+pkg_check_modules(GST REQUIRED
+    gstreamermm-1.0)
+include_directories(${GST_INCLUDE_DIRS})
+add_definitions(-Wno-deprecated-declarations)
 
-pkg_check_modules(AO REQUIRED
-    ao)
-include_directories(${AO_INCLUDE_DIRS})
-
+set(LIBS 
+    ${NCURSES_LIBRARIES}
+    ${GST_LIBRARIES}
+    pthread)
 
 include_directories(./include)
 add_subdirectory(./src)

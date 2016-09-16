@@ -1,11 +1,6 @@
 #pragma once
 
-extern "C"
-{
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavutil/avutil.h>
-}
+#include <gstreamermm.h>
 
 #include <ao/ao.h>
 #include <string>
@@ -38,14 +33,16 @@ namespace data
     struct OpenedTrack
     {
         const Track* parent;
-        std::string filePath;
+        std::string filepath;
 
-        AVFormatContext* formatContext = nullptr;
-        AVCodecContext*  codecContext = nullptr;
-        const AVCodec*   codec = nullptr;
+        Glib::RefPtr<Gst::Pipeline> pipeline;
 
-        int audioStreamID;
-        std::chrono::seconds duration;
+        Glib::RefPtr<Gst::FileSrc> src;
+
+        Glib::RefPtr<Gst::Element> decode;
+        Glib::RefPtr<Gst::Element> conv;
+        Glib::RefPtr<Gst::Element> resample;
+        Glib::RefPtr<Gst::Element> sink;
 
         OpenedTrack();
         OpenedTrack(const Track* parent);
@@ -62,15 +59,11 @@ namespace data
 
         private:
         bool valid = false;
-
-        void finalize();
     };
 
     struct Track
     {
-        std::string       filePath;
-        std::chrono::seconds duration;
-        size_t numSamples;
+        std::string filepath;
 
         std::string name;
         std::string artistName;

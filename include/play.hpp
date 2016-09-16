@@ -1,11 +1,9 @@
 #pragma once
 
 #include "data.hpp"
-#include "decode.hpp"
 #include "playlist.hpp"
 #include "options.hpp"
 
-#include <ao/ao.h>
 #include <queue>
 #include <list>
 #include <memory>
@@ -54,8 +52,6 @@ namespace playback
     namespace NowPlaying
     {
         extern std::shared_ptr<data::Track> track;
-        extern size_t frame;
-        extern size_t sample;
         extern bool playing;
 
         void reset();

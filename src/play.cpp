@@ -18,6 +18,7 @@
 
 
 using namespace std;
+using namespace chrono;
 
 using data::Track;
 using data::Album;
@@ -26,8 +27,6 @@ using data::Artist;
 namespace playback
 {
     shared_ptr<Track> NowPlaying::track;
-    size_t            NowPlaying::frame  = 0;
-    size_t            NowPlaying::sample = 0;
     bool              NowPlaying::playing = false;
 
 
@@ -54,182 +53,47 @@ namespace playback
 
     unique_ptr<Command> playTrack(data::OpenedTrack& track)
     {
-        NowPlaying::frame = 0; //TODO: add frame counter to OpenedTrack
-
-        ao_sample_format sampleFormat;
-        sampleFormat.bits = 16;
-        sampleFormat.byte_format = AO_FMT_NATIVE;
-        sampleFormat.channels = track.codecContext->channels;
-        sampleFormat.rate = track.codecContext->sample_rate;
-        sampleFormat.matrix = nullptr;
-
-        ao_device* device = ao_open_live(ao_default_driver_id(), &sampleFormat, nullptr);
-        if (device == nullptr)
-        {
-            log("Could not open device");
-            NowPlaying::reset();
-            return {};
-        }
-
-        /*
-         * NOTE:
-         * Following code was copied from
-         * 0xdeafc0de.wordpress.com/2013/12/19/ffmpeg-audio-playback-sample/
-         * and modified a bit.
-         * It should probably be changed (because licenses and stuff...)
-         */
-
-        AVPacket packet;
-        av_init_packet(&packet);
-
-        int bufSize = 9999; //TODO: find the right way to get buffer size
-
-        uint8_t* samples = new uint8_t[bufSize];
-
-        AVFormatContext* container = track.formatContext;
-        AVCodecContext*  cctx      = track.codecContext;
-        int streamID               = track.audioStreamID;
-
-        AVFrame* frame = av_frame_alloc();
-
+        track.pipeline->set_state(Gst::STATE_PLAYING);
         while (true)
         {
+            unique_ptr<Command> command = getPlaybackCommand();
+            if (command)
             {
-                unique_ptr<Command> command = getPlaybackCommand();
-                if (command)
+                switch (command->type())
                 {
-                    switch (command->type())
-                    {
-                        case CommandType::pause:
-                            playbackPause = true;
-                            break;
-                        case CommandType::resume:
-                            playbackPause = false;
-                            break;
-                        case CommandType::toggle:
-                            playbackPause = !playbackPause;
-                            break;
+                    case CommandType::pause:
+                        playbackPause = true;
+                        track.pipeline->set_state(Gst::STATE_PAUSED);
+                        break;
+                    case CommandType::resume:
+                        track.pipeline->set_state(Gst::STATE_PLAYING);
+                        playbackPause = false;
+                        break;
+                    case CommandType::toggle:
+                        playbackPause = !playbackPause;
+                        if (playbackPause)
+                        {
+                            track.pipeline->set_state(Gst::STATE_PAUSED);
+                        }
+                        else
+                        {
+                            track.pipeline->set_state(Gst::STATE_PLAYING);
+                        }
+                        break;
 
-                        default:
-                            av_frame_free(&frame);
-
-                            ao_close(device);
-                            av_free_packet(&packet);
-
-                            delete [] samples;
-
-                            return command;
-                    }
+                    default:
+                        track.pipeline->set_state(Gst::STATE_PAUSED);
+                        return command;
                 }
             }
 
-            if (playbackPause)
+            if (track.pipeline->get_bus()->poll(Gst::MESSAGE_EOS, 0))
             {
-                this_thread::sleep_for(chrono::milliseconds(10));
-                continue;
-            }
-
-            if (av_read_frame(container, &packet) < 0)
-            {
-                track.markAsInvalid();
                 break;
             }
 
-            if (packet.stream_index != streamID)
-            {
-                log("Packet from wrong stream");
-                continue;
-            }
-
-            if(packet.stream_index==streamID)
-            {
-                int frameFinished = 0;
-                int planeSize = 0;
-
-                avcodec_decode_audio4(cctx, frame, &frameFinished, &packet);
-                av_samples_get_buffer_size(&planeSize, cctx->channels,
-                        frame->nb_samples,
-                        cctx->sample_fmt, 1);
-                uint16_t* out = reinterpret_cast<uint16_t*>(samples);
-
-                if(frameFinished)
-                {
-                    int write_p=0;
-
-                    switch (cctx->sample_fmt)
-                    {
-                        case AV_SAMPLE_FMT_S16P:
-                            for (unsigned long nb=0;nb<planeSize/sizeof(uint16_t);nb++)
-                            {
-                                for (int ch = 0; ch < cctx->channels; ch++) 
-                                {
-                                    out[write_p] = reinterpret_cast<uint16_t*>(frame->extended_data[ch])[nb];
-                                    write_p++;
-                                }
-                            }
-                            ao_play(device, reinterpret_cast<char*>(samples), (planeSize) * cctx->channels);
-                            break;
-
-                        case AV_SAMPLE_FMT_FLTP:
-                            for (unsigned long nb=0;nb<planeSize/sizeof(float);nb++)
-                            {
-                                for (int ch = 0; ch < cctx->channels; ch++) 
-                                {
-                                    out[write_p] = reinterpret_cast<float*>(frame->extended_data[ch])[nb] * std::numeric_limits<short>::max() ;
-                                    write_p++;
-                                }
-                            }
-                            ao_play(device, reinterpret_cast<char*>(samples), ( planeSize/sizeof(float) )  * sizeof(uint16_t) * cctx->channels);
-                            break;
-
-                        case AV_SAMPLE_FMT_S16:
-                            ao_play(device, (char*)frame->extended_data[0],frame->linesize[0]);
-                            break;
-                        case AV_SAMPLE_FMT_FLT:
-                            for (unsigned long nb=0;nb<planeSize/sizeof(float);nb++)
-                            {
-                                out[nb] = static_cast<short>(reinterpret_cast<float*>(frame->extended_data[0])[nb] * std::numeric_limits<short>::max());
-                            }
-                            ao_play(device, reinterpret_cast<char*>(samples), ( planeSize/sizeof(float) )  * sizeof(uint16_t));
-                            break;
-
-                        case AV_SAMPLE_FMT_U8P:
-                            for (unsigned long nb=0;nb<planeSize/sizeof(uint8_t);nb++)
-                            {
-                                for (int ch = 0; ch < cctx->channels; ch++) 
-                                {
-                                    out[write_p] = (reinterpret_cast<uint8_t*>(frame->extended_data[0])[nb] - 127) * std::numeric_limits<short>::max() / 127 ;
-                                    write_p++;
-                                }
-                            }
-                            ao_play(device, reinterpret_cast<char*>(samples), ( planeSize/sizeof(uint8_t) )  * sizeof(uint16_t) * cctx->channels);
-                            break;
-
-                        case AV_SAMPLE_FMT_U8:
-                            for (unsigned long nb=0;nb<planeSize/sizeof(uint8_t);nb++)
-                            {
-                                out[nb] = static_cast<short>((reinterpret_cast<uint8_t*>(frame->extended_data[0])[nb] - 127) * std::numeric_limits<short>::max() / 127);
-                            }
-                            ao_play(device, reinterpret_cast<char*>(samples), ( planeSize/sizeof(uint8_t) )  * sizeof(uint16_t));
-                            break;
-
-                        default:
-                            log("PCM type not supported");
-                            exit(1);
-                    }
-                    NowPlaying::frame++;
-                    NowPlaying::sample += frame->nb_samples;
-                } 
-            }
-            av_free_packet(&packet);
+            this_thread::sleep_for(50ms);
         }
-
-        av_frame_free(&frame);
-
-        ao_close(device);
-        av_packet_unref(&packet);
-
-        delete [] samples;
 
         return {};
     }
@@ -555,7 +419,5 @@ end:    NowPlaying::reset();
     void NowPlaying::reset()
     {
         track.reset();
-        frame = 0;
-        sample = 0;
     }
 }

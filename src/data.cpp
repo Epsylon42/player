@@ -1,5 +1,4 @@
 #include "data.hpp"
-#include "decode.hpp"
 #include "log.hpp"
 
 #include <algorithm>
@@ -73,89 +72,79 @@ namespace data
 
     OpenedTrack::OpenedTrack(const Track* parent) :
         parent(parent),
-        filePath(parent->filePath)
+        filepath(parent->filepath)
     {
-        assert(parent != nullptr); //FIXME: also assert the thing above
+        assert(parent != nullptr);
 
-        formatContext = avformat_alloc_context();
+        pipeline = Gst::Pipeline::create();
 
-        if (avformat_open_input(&formatContext, filePath.c_str(), nullptr, nullptr) < 0)
+        src = Gst::FileSrc::create();
+        if (!src)
         {
-            log("Cannot open %s") % filePath;
+            log("Error creating source: %s") % filepath;
+            return;
+        }
+        src->property_location() = filepath;
+
+        decode = Gst::ElementFactory::create_element("decodebin");
+        if (!decode)
+        {
+            log("Error creating decodebin: %s") % filepath;
             return;
         }
 
-        if (avformat_find_stream_info(formatContext, nullptr) < 0)
+        conv = Gst::ElementFactory::create_element("audioconvert");
+        if (!conv)
         {
-            log("Cannot find stream info in %s") % filePath;
+            log("Error creating audioconvert: %s") % filepath;
             return;
         }
 
-        audioStreamID = -1;
-        for (unsigned int i = 0; i < formatContext->nb_streams; i++)
+        resample = Gst::ElementFactory::create_element("audioresample");
+        if (!resample)
         {
-            if (formatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
-            {
-                audioStreamID = i;
-            }
-        }
-        if (audioStreamID == -1)
-        {
-            log("No audio streams in %s") % filePath;
+            log("Error creating audioresample: %s") % filepath;
             return;
         }
 
-        codecContext = formatContext->streams[audioStreamID]->codec;
-        codec = avcodec_find_decoder(codecContext->codec_id);
-        if (codec == nullptr)
+        sink = Gst::ElementFactory::create_element("autoaudiosink");
+        if (!sink)
         {
-            log("Cannot find codec for %s") % filePath;
-            codecContext = nullptr;
+            log("Error creating autoaudiosink: %s") % filepath;
             return;
         }
 
-        if (avcodec_open2(codecContext, codec, nullptr) < 0)
-        {
-            codec = nullptr;
-            codecContext = nullptr;
-            log("Cannot open codec for %s") % filePath;
-            return;
-        }
+        pipeline->add(src)->add(decode)->add(conv)->add(resample)->add(sink);
+        src->link(decode);
+        conv->link(resample);
+        resample->link(sink);
 
-        duration = chrono::seconds((formatContext->streams[audioStreamID]->duration * formatContext->streams[audioStreamID]->time_base.num) / formatContext->streams[audioStreamID]->time_base.den);
+        decode->signal_pad_added().connect([this](const Glib::RefPtr<Gst::Pad>& pad)
+        {
+            decode->link(conv);
+        });
+
+        pipeline->set_state(Gst::STATE_PAUSED);
 
         valid = true;
     }
 
     OpenedTrack::OpenedTrack(OpenedTrack&& other) :
         parent(other.parent),
-        filePath(other.filePath)
+        filepath(other.filepath)
     {
-        formatContext = other.formatContext;
-        codecContext  = other.codecContext;
-        codec         = other.codec;
-        audioStreamID = other.audioStreamID;
-        duration      = other.duration;
-        valid         = other.valid;
+        pipeline = move(other.pipeline);
+        valid = other.valid;
+        other.valid = false;
     }
 
     void OpenedTrack::operator= (OpenedTrack&& other)
     {
-        finalize();
-
-        parent        = other.parent;
-        filePath      = other.filePath;
-        formatContext = other.formatContext;
-        codecContext  = other.codecContext;
-        codec         = other.codec;
-        audioStreamID = other.audioStreamID;
-        duration      = other.duration;
-        valid         = other.valid;
-
+        parent = other.parent;
+        filepath = other.filepath;
+        pipeline = move(other.pipeline);
+        valid = other.valid;
         other.valid = false;
-        other.codec = nullptr;
-        other.codecContext = nullptr;
-        other.formatContext = nullptr;
     }
 
     void OpenedTrack::markAsInvalid()
@@ -170,22 +159,9 @@ namespace data
 
     OpenedTrack::~OpenedTrack()
     {
-        finalize();
-    }
-
-    void OpenedTrack::finalize()
-    {
-        if (codec != nullptr)
+        if (valid)
         {
-            avcodec_close(codecContext);
-            codec = nullptr;
-            codecContext = nullptr;
-        }
-
-        if (formatContext != nullptr)
-        {
-            avformat_close_input(&formatContext);
-            formatContext = nullptr;
+            pipeline->set_state(Gst::STATE_NULL);
         }
     }
 
@@ -193,26 +169,30 @@ namespace data
 
     Track::Track(const string& file)
     {
-        filePath = file;
+        filepath = file;
 
         auto opened = open();
         if (!opened.isValid())
         {
-            log("Cannot read track data from %s") % filePath;
+            log("Cannot read track data from %s") % filepath;
             exit(1); //TODO: proper error handling
         }
 
-        numSamples = (opened.duration * opened.codecContext->sample_rate).count();
-        duration = opened.duration;
 
-        name = getMetadata("title", {opened.formatContext->metadata, opened.formatContext->streams[opened.audioStreamID]->metadata});
-        if (name.empty())
-        {
-            name = filePath;
-        }
+        Gst::TagList list;
+        Glib::RefPtr<Gst::MessageTag> message = Glib::RefPtr<Gst::MessageTag>::cast_static(opened.pipeline->get_bus()->poll(Gst::MESSAGE_TAG, Gst::CLOCK_TIME_NONE));
+        message->parse(list);
 
-        albumName = getMetadata("album", {opened.formatContext->metadata, opened.formatContext->streams[opened.audioStreamID]->metadata});
-        artistName = getMetadata("artist", {opened.formatContext->metadata, opened.formatContext->streams[opened.audioStreamID]->metadata});
+        Glib::ustring str;
+        bool readSuccess;
+        readSuccess = list.get(Gst::TAG_TITLE, str);
+        name = (readSuccess ? str : "unnamed");
+
+        readSuccess = list.get(Gst::TAG_ALBUM, str);
+        albumName = (readSuccess ? str : "unknown");
+
+        readSuccess = list.get(Gst::TAG_ARTIST, str);
+        artistName = (readSuccess ? str : "unknown");
     }
 
     OpenedTrack Track::open() const

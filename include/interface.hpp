@@ -1,6 +1,8 @@
 #pragma once
 
 #include <ncurses.h>
+#undef is_pad
+
 #include <list>
 #include <memory>
 #include <mutex>

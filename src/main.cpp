@@ -3,9 +3,14 @@
 #include "interface.hpp"
 #include "playlist.hpp"
 
-#include <ao/ao.h>
+#include "log.hpp"
+
+#include <gstreamermm.h>
+
 #include <algorithm>
 #include <memory>
+#include <string>
+#include <iostream>
 
 #include <ncurses.h>
 
@@ -40,13 +45,11 @@ void sortLibrary()
     }
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     setlocale(LC_ALL, "");
+    Gst::init(argc, argv);
 
-    av_log_set_level(AV_LOG_QUIET);
-    av_register_all();
-    ao_initialize();
     data::init();
 
     for (int i = 1; i < argc; i++)
@@ -62,6 +65,4 @@ int main(int argc, char* argv[])
     playback::end();
 
     data::end();
-
-    ao_shutdown();
 }
