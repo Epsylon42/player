@@ -1,6 +1,7 @@
 #include "data.hpp"
 #include "play.hpp"
 #include "interface.hpp"
+#include "playlist.hpp"
 
 #include <ao/ao.h>
 #include <algorithm>
@@ -12,27 +13,29 @@ using namespace std;
 
 void sortLibrary()
 {
-    sort(data::artistsDeque.begin()+2, data::artistsDeque.end(),
-         [](shared_ptr<Artist> fst, shared_ptr<Artist> snd)
-         {
-             return fst->name < snd->name;
-         });
+    using namespace data;
 
-    for (auto artist : data::artistsDeque)
+    artists.sort(
+            [](shared_ptr<Artist> fst, shared_ptr<Artist> snd)
+            {
+                return fst->name < snd->name;
+            });
+
+    for (auto artist : artists)
     {
-        sort(artist->albumsDeque.begin()+2, artist->albumsDeque.end(),
-             [](shared_ptr<Album> fst, shared_ptr<Album> snd)
-             {
-                 return fst->name < snd->name;
-             });
+        artist->albums.sort(
+                [](shared_ptr<Album> fst, shared_ptr<Album> snd)
+                {
+                    return fst->name < snd->name;
+                });
 
-        for (auto album : artist->albumsDeque)
+        for (auto album : artist->albums)
         {
-            sort(album->tracksDeque.begin(), album->tracksDeque.end(),
-                 [](shared_ptr<Track> fst, shared_ptr<Track> snd)
-                 {
-                     return fst->name < snd->name;
-                 });
+            album->tracks.sort(
+                    [](shared_ptr<Track> fst, shared_ptr<Track> snd)
+                    {
+                        return fst->name < snd->name;
+                    });
         }
     }
 }
@@ -44,23 +47,21 @@ int main(int argc, char* argv[])
     av_log_set_level(AV_LOG_QUIET);
     av_register_all();
     ao_initialize();
-    initData();
+    data::init();
 
-    addTrack(make_shared<Track>(argv[1]));
-    for (int i = 2; i < argc; i++)
+    for (int i = 1; i < argc; i++)
     {
-        addTrack(make_shared<Track>(argv[i]));
+        data::addTrack(make_shared<data::Track>(argv[i]));
     }
     sortLibrary();
 
-    initPlay();
+    playback::init();
 
     interfaceLoop();
+    
+    playback::end();
 
-    endPlay();
-
-    data::artistsDeque.clear();
-    data::artistsMap.clear();
+    data::end();
 
     ao_shutdown();
 }

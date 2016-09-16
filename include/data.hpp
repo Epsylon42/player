@@ -10,87 +10,118 @@ extern "C"
 #include <ao/ao.h>
 #include <string>
 #include <map>
-#include <deque>
+#include <list>
 #include <thread>
 #include <memory>
 #include <chrono>
 
-struct Track;
-struct Album;
-struct Artist;
 
 namespace data
 {
+    struct OpenedTrack;
+    struct Track;
+    struct Album;
+    struct Artist;
+
     extern std::map<std::string, std::shared_ptr<Artist>> artistsMap;
-    extern std::deque<std::shared_ptr<Artist>>            artistsDeque;
+    extern std::list<std::shared_ptr<Artist>>             artists;
+
+    extern std::shared_ptr<Artist> allArtists;
+    extern std::shared_ptr<Artist> unknownArtist;
+
+    void init();
+    void end();
+
+    void addTrack(std::shared_ptr<Track> track);
+    std::list<std::shared_ptr<Artist>> getArtists();
+
+    struct OpenedTrack
+    {
+        const Track* parent;
+        std::string filePath;
+
+        AVFormatContext* formatContext = nullptr;
+        AVCodecContext*  codecContext = nullptr;
+        const AVCodec*   codec = nullptr;
+
+        int audioStreamID;
+        std::chrono::seconds duration;
+
+        OpenedTrack();
+        OpenedTrack(const Track* parent);
+        OpenedTrack(OpenedTrack&& other);
+
+        OpenedTrack& operator= (const OpenedTrack&) = delete;
+        void operator= (OpenedTrack&& other);
+
+        void markAsInvalid();
+
+        bool isValid() const;
+
+        ~OpenedTrack();
+
+        private:
+        bool valid = false;
+
+        void finalize();
+    };
+
+    struct Track
+    {
+        std::string       filePath;
+        std::chrono::seconds duration;
+        size_t numSamples;
+
+        std::string name;
+        std::string artistName;
+        std::string albumName;
+
+        Track(const std::string& file);
+
+        OpenedTrack open() const;
+        void testPrint() const;
+    };
+
+
+
+    struct Album
+    {
+        std::string name;
+
+        std::map<std::string, std::shared_ptr<Track>> tracksMap;
+        std::list<std::shared_ptr<Track>>             tracks;
+
+        Album(const std::string& name);
+
+        void addTrack(std::shared_ptr<Track> track);
+
+        std::list<std::shared_ptr<Track>> getTracks() const;
+        void testPrint() const;
+
+        ~Album();
+    };
+
+
+
+    struct Artist
+    {
+        std::string name;
+
+        std::map<std::string, std::shared_ptr<Album>> albumsMap;
+        std::list<std::shared_ptr<Album>>             albums;
+
+        std::shared_ptr<Album> allAlbums;
+        std::shared_ptr<Album> unknownAlbum;
+
+        Artist(const std::string& name);
+
+        void addAlbum(std::shared_ptr<Album> album);
+        void addTrack(std::shared_ptr<Track> track);
+
+        std::list<std::shared_ptr<Track>> getTracks() const;
+        std::list<std::shared_ptr<Album>> getAlbums() const;
+        void testPrint() const;
+
+        ~Artist();
+    };
 }
-
-void initData();
-
-void addTrack(std::shared_ptr<Track> track);
-std::deque<std::shared_ptr<Track>> getTracks();
-std::deque<std::shared_ptr<Album>> getAlbums(bool includeUnknown = true);
-
-struct Track
-{
-    std::string       filePath;
-    AVFormatContext*  container = nullptr;
-    AVCodecContext*   codecContext = nullptr;
-    AVCodec*          codec = nullptr;
-    ao_sample_format sampleFormat;
-    int               streamID;
-    bool opened = false;
-    std::chrono::seconds duration;
-    size_t numSamples;
-    
-
-    std::string name;
-    std::string artistName;
-    std::string albumName;
-
-    Track(const std::string& file);
-
-    void open();
-    void close();
-    void decodeMetadata();
-    void testPrint();
-
-    ~Track();
-};
-
-
-
-struct Album
-{
-    std::string name;
-
-    std::map<std::string, std::shared_ptr<Track>> tracksMap;
-    std::deque<std::shared_ptr<Track>>            tracksDeque;
-
-    Album(const std::string& name);
-
-    std::deque<std::shared_ptr<Track>> getTracks();
-    void addTrack(std::shared_ptr<Track> track);
-    void testPrint();
-
-    ~Album();
-};
-
-
-
-struct Artist
-{
-    std::string name;
-
-    std::map<std::string, std::shared_ptr<Album>> albumsMap;
-    std::deque<std::shared_ptr<Album>>            albumsDeque;
-
-    Artist(const std::string& name);
-
-    std::deque<std::shared_ptr<Album>> getAlbums();
-    void addAlbum(std::shared_ptr<Album> album);
-    void addTrack(std::shared_ptr<Track> track);
-    void testPrint();
-
-    ~Artist();
-};

@@ -2,7 +2,9 @@
 
 #include "data.hpp"
 
-#include <deque>
+#include <list>
+#include <vector>
+#include <initializer_list>
 #include <memory>
 #include <string>
 
@@ -14,6 +16,7 @@ class Condition;
 class NameCondition; 
 class AlbumNameCondition;
 class ArtistNameCondition;
+class LogicalCondition;
 class AND_Condition;
 class OR_Condition;
 
@@ -25,22 +28,23 @@ class Playlist
 
 	Playlist(const std::string& name);
 
-	virtual std::deque<std::shared_ptr<Track>> getList() const = 0;
+	virtual std::list<std::shared_ptr<data::Track>> getTracks() const = 0;
 	virtual void testPrint() const = 0;
 };
 
 
 class SimplePlaylist : public Playlist
 {
-    std::deque<std::shared_ptr<Track>> tracks;
+    std::list<std::shared_ptr<data::Track>> tracks;
 
     public:
     SimplePlaylist(const std::string& name);
-    SimplePlaylist(const std::string& name, const std::deque<std::shared_ptr<Track>>& tracks);
+    SimplePlaylist(const std::string& name, const std::list<std::shared_ptr<data::Track>>& tracks);
 
-    void addTrack(std::shared_ptr<Track> track);
+    void addTrack(std::shared_ptr<data::Track> track);
+    void removeTrack(std::shared_ptr<data::Track> track);
 
-    virtual std::deque<std::shared_ptr<Track>> getList() const override;
+    virtual std::list<std::shared_ptr<data::Track>> getTracks() const override;
     virtual void testPrint() const override;
 };
 
@@ -49,7 +53,7 @@ class SimplePlaylist : public Playlist
 class Condition
 {
     public:
-	virtual bool check(const std::shared_ptr<Track>& tracks) const = 0;
+	virtual bool check(const std::shared_ptr<data::Track>& tracks) const = 0;
 };
 
 
@@ -60,7 +64,7 @@ class NameCondition : public Condition
     public:
     NameCondition(const std::string& name);
 
-    virtual bool check(const std::shared_ptr<Track>& tracks) const override;
+    virtual bool check(const std::shared_ptr<data::Track>& tracks) const override;
 };
 
 
@@ -71,7 +75,7 @@ class AlbumNameCondition : public Condition
     public:
     AlbumNameCondition(const std::string& albumName);
 
-    virtual bool check(const std::shared_ptr<Track>& tracks) const override;
+    virtual bool check(const std::shared_ptr<data::Track>& tracks) const override;
 };
 
 
@@ -82,44 +86,43 @@ class ArtistNameCondition : public Condition
     public:
     ArtistNameCondition(const std::string& artistName);
 
-    virtual bool check(const std::shared_ptr<Track>& tracks) const override;
+    virtual bool check(const std::shared_ptr<data::Track>& tracks) const override;
 };
 
 
-class AND_Condition : public Condition
+class LogicalCondition : public Condition
 {
-    std::deque<std::unique_ptr<Condition>> conditions;
+    protected:
+    std::vector<std::unique_ptr<Condition>> conditions;
 
     public:
-    void addCondition(std::unique_ptr<Condition> cond);
-
-    virtual bool check(const std::shared_ptr<Track>& tracks) const override;
+    LogicalCondition(std::vector<std::unique_ptr<Condition>> conditions);
 };
 
 
-class OR_Condition : public Condition
+class AND_Condition : public LogicalCondition
 {
-    std::deque<std::unique_ptr<Condition>> conditions;
+    public:
+    virtual bool check(const std::shared_ptr<data::Track>& tracks) const override;
+};
+
+
+class OR_Condition : public LogicalCondition
+{
 
     public:
-    void addCondition(std::unique_ptr<Condition> cond);
-
-    virtual bool check(const std::shared_ptr<Track>& tracks) const override;
+    virtual bool check(const std::shared_ptr<data::Track>& tracks) const override;
 };
 
 
 // SMART PLAYLIST
 class SmartPlaylist : public Playlist
 {
-    AND_Condition AND_condition;
-    OR_Condition  OR_condition;
+    std::unique_ptr<Condition> condition;
 
     public:
-    SmartPlaylist(const std::string& name);
+    SmartPlaylist(const std::string& name, std::unique_ptr<Condition> condition);
 
-    void addAND_Condition(std::unique_ptr<Condition> cond);
-    void addOR_Condition(std::unique_ptr<Condition> cond);
-
-    virtual std::deque<std::shared_ptr<Track>> getList() const override;
+    virtual std::list<std::shared_ptr<data::Track>> getTracks() const override;
     virtual void testPrint() const override;
 };

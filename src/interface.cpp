@@ -15,14 +15,18 @@
 
 using namespace std;
 using namespace interface;
+using namespace data;
+
+namespace play = playback;
+using namespace playback;
 
 recursive_mutex interface::interfaceMutex;
 int interface::sizeX;
 int interface::sizeY;
 shared_ptr<ColumnWindow> interface::mainWindow;
 
-deque<shared_ptr<Album>>  interface::DataDeques::albumsDeque;
-deque<shared_ptr<Track>>  interface::DataDeques::tracksDeque;
+list<shared_ptr<Album>>  interface::DataLists::albumsList;
+list<shared_ptr<Track>>  interface::DataLists::tracksList;
 
 void initInterface()
 {
@@ -36,12 +40,12 @@ void initInterface()
 
     mainWindow = make_shared<ColumnWindow>(0, 0, sizeY, sizeX);
 
-    DataDeques::albumsDeque = data::artistsDeque.front()->getAlbums();
-    DataDeques::tracksDeque = DataDeques::albumsDeque.front()->getTracks();
+    DataLists::albumsList = data::artists.front()->getAlbums();
+    DataLists::tracksList = DataLists::albumsList.front()->getTracks();
 
-    auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataDeques::tracksDeque);
-    auto albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, DataDeques::albumsDeque);
-    auto artistsWindow = make_shared<ArtistsListingWindow>(0, 0, 0, 0, data::artistsDeque);
+    auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataLists::tracksList);
+    auto albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, DataLists::albumsList);
+    auto artistsWindow = make_shared<ArtistsListingWindow>(0, 0, 0, 0, data::artists);
     auto playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 0, 0);
 
     auto line1 = make_shared<LineWindow>(0, 0, 0, 0);
@@ -70,14 +74,15 @@ void interfaceLoop()
 void endInterface()
 {
     mainWindow.reset();
-    DataDeques::albumsDeque.clear();
-    DataDeques::tracksDeque.clear();
+    DataLists::albumsList.clear();
+    DataLists::tracksList.clear();
 
     endwin();
 }
 
 void updateWindows()
 {
+    //log("updwindows");
     int newSizeX = getmaxx(stdscr);
     int newSizeY = getmaxy(stdscr);
     if (newSizeX != sizeX || newSizeY != sizeY)
@@ -94,6 +99,7 @@ void updateWindows()
 
 void fullRefresh()
 {
+    //log("fullrefresh");
     clear();
     wclear(mainWindow->nwindow);
     refresh();
@@ -104,6 +110,7 @@ void fullRefresh()
 //returns false if pressed exit key
 bool readKey()
 { 
+    //log("readkey");
     int ch = wgetch(mainWindow->nwindow.get());
     switch (ch)
     {
@@ -132,7 +139,12 @@ bool readKey()
             {
                 if (auto locked = mainWindow->getSelected().lock())
                 {
+                    //log("processkey_call");
                     locked->processKey(ch);
+                }
+                else
+                {
+                    //log("lock failed");
                 }
             }
     }
@@ -150,6 +162,7 @@ Window::Window(int startY, int startX, int nlines, int ncols) :
 
 weak_ptr<Window> Window::getSelected()
 {
+    //log("getselected_this");
     return shared_from_this();
 }
 
@@ -183,6 +196,7 @@ void Window::update()
 
 void Window::processKey(int ch)
 {
+    //log("processkey");
     switch(ch)
     {
         case 'h':
@@ -231,6 +245,7 @@ void EmptyWindow::update()
 }
 void EmptyWindow::processKey(int ch) 
 {
+    //log("processkey_empty");
     Window::processKey(ch);
 }
 
@@ -245,12 +260,15 @@ MetaWindow::MetaWindow(int startY, int startX, int nlines, int ncols) :
 
 weak_ptr<Window> MetaWindow::getSelected() 
 {
+    //log("getselected_meta");
     if(selectedWindow != windows.end())
     {
+        //log("getselected_meta success");
         return (*selectedWindow)->getSelected();
     }
     else
     {
+        //log("return {}");
         return {};
     }
 }
@@ -268,6 +286,11 @@ void MetaWindow::addWindow(shared_ptr<Window> win)
     windows.push_back(win);
     quotients.push_back(1-sum);
     recalculateSizes();
+
+    if (selectedWindow == windows.end())
+    {
+        selectedWindow = windows.begin();
+    }
 
     update();
 }
@@ -297,6 +320,7 @@ void ColumnWindow::update()
 
 void ColumnWindow::processKey(int ch)
 {
+    //log("processkey_column");
     switch (ch)
     {
         case 'j':
@@ -387,6 +411,7 @@ void LineWindow::update()
 
 void LineWindow::processKey(int ch)
 {
+    //log("processkey_line");
     switch (ch)
     {
         case 'l':
@@ -452,34 +477,48 @@ void LineWindow::recalculateSizes()
 }
 
 
-    template< typename DequeType >
-void DequeListingWindow<DequeType>::afterReshape()
+    template< typename ListType >
+void ListListingWindow<ListType>::afterReshape()
 {
     screenStart = cursorPos;
 }
 
-template< typename DequeType >
-DequeListingWindow<DequeType>::DequeListingWindow(int startY, int startX, int nlines, int ncols, deque<DequeType>& data) :
+template< typename ListType >
+ListListingWindow<ListType>::ListListingWindow(int startY, int startX, int nlines, int ncols, list<ListType>& data) :
     Window(startY, startX, nlines, ncols), data(data)
 {
     cursorPos   = this->data.begin();
     screenStart = this->data.begin();
 }
 
-    template< typename DequeType >
-DequeListingWindow<DequeType>::~DequeListingWindow()
+    template< typename ListType >
+ListListingWindow<ListType>::~ListListingWindow()
 {
 
 }
 
-    template< typename DequeType >
-void DequeListingWindow<DequeType>::update()
+    template < typename ListType >
+bool ListListingWindow<ListType>::validateIterator(typename std::list<ListType>::iterator iter) const
+//FIXME: SOOOOOO SLOOOOOOWWWW
 {
-    if (!validateIterator(screenStart) || !validateIterator(cursorPos))
+    for (auto cmp = data.begin(); cmp != data.end(); ++cmp)
+    {
+        if (iter == cmp)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+    template< typename ListType >
+void ListListingWindow<ListType>::update()
+{
+    if (!validateIterator(cursorPos) || !validateIterator(screenStart))
     {
         cursorPos = data.begin();
         screenStart = data.begin();
-        wclear(nwindow);
     }
 
     auto p = screenStart;
@@ -508,9 +547,10 @@ void DequeListingWindow<DequeType>::update()
     Window::update();
 }
 
-    template< typename DequeType >
-void DequeListingWindow<DequeType>::processKey(int ch)
+    template< typename ListType >
+void ListListingWindow<ListType>::processKey(int ch)
 {
+    //log("processkey");
     switch (ch)
     {
         case KEY_UP:
@@ -526,9 +566,9 @@ void DequeListingWindow<DequeType>::processKey(int ch)
             break;
 
         case KEY_DOWN:
-            if (cursorPos != data.end()-1)
+            if (cursorPos != prev(data.end()))
             {
-                if (cursorPos == screenStart+nlines-1)
+                if (cursorPos == next(screenStart, nlines-1))
                 {
                     ++screenStart;
                 }
@@ -550,15 +590,8 @@ void DequeListingWindow<DequeType>::processKey(int ch)
     }
 }
 
-template< typename DequeType >
-bool DequeListingWindow<DequeType>::validateIterator(typename std::deque<DequeType>::iterator iter) const
-{
-    return iter >= data.begin() && iter <= data.end();
-}
-
-
-template< typename DequeType >
-string MediaListingWindow<DequeType>::getName(typename deque<DequeType>::iterator iter) const
+template< typename ListType >
+string MediaListingWindow<ListType>::getName(typename list<ListType>::iterator iter) const
 {
     return (*iter)->name;
 }
@@ -586,7 +619,7 @@ void TracksListingWindow::press(int key)
 
 void AlbumsListingWindow::select()
 {
-    DataDeques::tracksDeque = (*cursorPos)->getTracks();
+    DataLists::tracksList = (*cursorPos)->getTracks();
 }
 
 void AlbumsListingWindow::press(int key)
@@ -607,8 +640,8 @@ void AlbumsListingWindow::press(int key)
 
 void ArtistsListingWindow::select()
 {
-    DataDeques::albumsDeque = (*cursorPos)->getAlbums();
-    DataDeques::tracksDeque = DataDeques::albumsDeque.front()->getTracks();
+    DataLists::albumsList = (*cursorPos)->getAlbums();
+    DataLists::tracksList = DataLists::albumsList.front()->getTracks();
 }
 
 void ArtistsListingWindow::press(int key)
@@ -645,6 +678,7 @@ void PlaybackControlWindow::update()
 
 void PlaybackControlWindow::processKey(int ch)
 {
+    //log("processkey_playback_c");
     switch (ch)
     {
         case KEY_RIGHT:
@@ -709,18 +743,18 @@ void PlaybackControlWindow::playbackWindowThread()
             }
             wattroff(nwindow, A_BOLD);
 
-            {
-                //FIXME: stops showing correct time after two minutes
+            //{
+                ////FIXME: stops showing correct time after two minutes
 
-                using namespace chrono;
+                //using namespace chrono;
 
-                shared_ptr<Track>& track = play::NowPlaying::track;
+                //shared_ptr<Track>& track = play::NowPlaying::track;
 
-                seconds sec(play::NowPlaying::sample / track->codecContext->sample_rate);
-                minutes min(duration_cast<minutes>(sec));
+                //seconds sec(play::NowPlaying::sample / track->codecContext->sample_rate);
+                //minutes min(duration_cast<minutes>(sec));
 
-                wprintw(nwindow, "%d:%d / %d:%d", min, sec, duration_cast<minutes>(track->duration), duration_cast<seconds>(track->duration).count()%60);
-            }
+                //wprintw(nwindow, "%d:%d / %d:%d", min, sec, duration_cast<minutes>(track->duration), duration_cast<seconds>(track->duration).count()%60);
+            //}
 
 
             wmove(nwindow, 2, 1);
@@ -729,7 +763,7 @@ void PlaybackControlWindow::playbackWindowThread()
             wattron(nwindow, A_BOLD);
             wprintw(nwindow, "Queued: ");
             wattroff(nwindow, A_BOLD);
-            wprintw(nwindow, "%d", play::playbackQueue.size());
+            wprintw(nwindow, "%d", play::playbackControl.size()); //FIXME: it prints number of all commands, not only tracks
 
 
             Window::update();

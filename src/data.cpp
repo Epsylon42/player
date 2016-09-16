@@ -1,5 +1,6 @@
 #include "data.hpp"
 #include "decode.hpp"
+#include "log.hpp"
 
 #include <algorithm>
 #include <exception>
@@ -14,245 +15,315 @@ using namespace data;
 
 using boost::format;
 
-map<string, shared_ptr<Artist>> data::artistsMap;
-deque<shared_ptr<Artist>>       data::artistsDeque;
-
-void initData()
+namespace data
 {
-    shared_ptr<Artist> temp(new Artist("all"));
-    artistsDeque.push_back(temp);
-    artistsMap["all"] = temp;
+    map<string, shared_ptr<Artist>> artistsMap;
+    list<shared_ptr<Artist>>        artists;
 
-    temp.reset(new Artist("unknown"));
-    artistsDeque.push_back(temp);
-    artistsMap["unknown"] = temp;
-}
+    shared_ptr<Artist> allArtists;
+    shared_ptr<Artist> unknownArtist;
 
-void addTrack(shared_ptr<Track> track)
-{
-    if (artistsMap.find(track->artistName) == artistsMap.end())
+    void init()
     {
-	shared_ptr<Artist> temp(new Artist(track->artistName));
-	artistsDeque.push_back(temp);
-	artistsMap[track->artistName] = temp;
+        allArtists    = make_shared<Artist>("all");
+        unknownArtist = make_shared<Artist>("unknown");
     }
 
-    artistsMap["all"]->addTrack(track);
-    artistsMap[track->artistName]->addTrack(track);
-}
-
-deque<shared_ptr<Track>> getTracks()
-{
-    deque<shared_ptr<Track>> tracks;
-    for (auto artist = artistsDeque.begin()+1; artist != artistsDeque.end(); artist++)
+    void end()
     {
-	for (auto album = (*artist)->albumsDeque.begin()+1; album != (*artist)->albumsDeque.end(); album++)
-	{
-	    tracks.insert(tracks.end(), (*album)->tracksDeque.begin(), (*album)->tracksDeque.end());
-	}
+        artistsMap.clear();
+        artists.clear();
+
+        allArtists.reset();
+        unknownArtist.reset();
     }
 
-    return tracks;
-}
-
-deque<shared_ptr<Album>> getAlbums(bool includeUnknown)
-{
-    deque<shared_ptr<Album>> albums;
-    for (auto artist : artistsDeque)
+    void addTrack(shared_ptr<Track> track)
     {
-	albums.insert(albums.end(), artist->albumsDeque.begin(), artist->albumsDeque.end());
+        allArtists->addTrack(track);
+
+        if (track->artistName.empty())
+        {
+            unknownArtist->addTrack(track);
+            return;
+        }
+
+        if (artistsMap.find(track->artistName) == artistsMap.end())
+        {
+            shared_ptr<Artist> temp = make_shared<Artist>(track->artistName);
+            artists.push_back(temp);
+            artistsMap[track->artistName] = temp;
+        }
+
+        artistsMap[track->artistName]->addTrack(track);
     }
 
-    return albums;
-}
-
-Track::Track(const string& file)
-{
-    filePath = file;
-    container = nullptr;
-    codecContext = nullptr;
-    codec = nullptr;
-
-    open();
-
-    duration = chrono::seconds((container->streams[streamID]->duration * container->streams[streamID]->time_base.num) / container->streams[streamID]->time_base.den);
-    numSamples = (duration * codecContext->sample_rate).count();
-
-    decodeMetadata();
-    sampleFormat = getSampleFormat(this);
-
-    close();
-}
-
-Track::~Track()
-{
-    if (opened)
+    list<shared_ptr<Artist>> getArtists()
     {
-	close();
-    }
-}
+        auto ret = artists;
+        ret.push_front(unknownArtist);
+        ret.push_front(allArtists);
 
-void Track::open()
-{
-    if (opened)
-    {
-        return;
+        return ret;
     }
 
-    container = avformat_alloc_context();
 
-    if (avformat_open_input(&container, filePath.c_str(), nullptr, nullptr) < 0)
+
+    OpenedTrack::OpenedTrack() {}
+
+    OpenedTrack::OpenedTrack(const Track* parent) :
+        parent(parent),
+        filePath(parent->filePath)
     {
-	throw invalid_argument(
-		string("Could not open file: ") + filePath.c_str()
-		);
+        assert(parent != nullptr); //FIXME: also assert the thing above
+
+        formatContext = avformat_alloc_context();
+
+        if (avformat_open_input(&formatContext, filePath.c_str(), nullptr, nullptr) < 0)
+        {
+            log("Cannot open %s") % filePath;
+            return;
+        }
+
+        if (avformat_find_stream_info(formatContext, nullptr) < 0)
+        {
+            log("Cannot find stream info in %s") % filePath;
+            return;
+        }
+
+        audioStreamID = -1;
+        for (unsigned int i = 0; i < formatContext->nb_streams; i++)
+        {
+            if (formatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+            {
+                audioStreamID = i;
+            }
+        }
+        if (audioStreamID == -1)
+        {
+            log("No audio streams in %s") % filePath;
+            return;
+        }
+
+        codecContext = formatContext->streams[audioStreamID]->codec;
+        codec = avcodec_find_decoder(codecContext->codec_id);
+        if (codec == nullptr)
+        {
+            log("Cannot find codec for %s") % filePath;
+            codecContext = nullptr;
+            return;
+        }
+
+        if (avcodec_open2(codecContext, codec, nullptr) < 0)
+        {
+            codec = nullptr;
+            codecContext = nullptr;
+            log("Cannot open codec for %s") % filePath;
+            return;
+        }
+
+        duration = chrono::seconds((formatContext->streams[audioStreamID]->duration * formatContext->streams[audioStreamID]->time_base.num) / formatContext->streams[audioStreamID]->time_base.den);
+
+        valid = true;
     }
-    if (avformat_find_stream_info(container, nullptr) < 0)
+
+    OpenedTrack::OpenedTrack(OpenedTrack&& other) :
+        parent(other.parent),
+        filePath(other.filePath)
     {
-	throw logic_error(
-		string("Could not find stream data: ") + filePath.c_str()
-		);
+        formatContext = other.formatContext;
+        codecContext  = other.codecContext;
+        codec         = other.codec;
+        audioStreamID = other.audioStreamID;
+        duration      = other.duration;
+        valid         = other.valid;
     }
 
-    streamID = -1;
-    for (unsigned int i = 0; i < container->nb_streams; i++)
+    void OpenedTrack::operator= (OpenedTrack&& other)
     {
-	if (container->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
-	{
-	    streamID = i;
-	    break;
-	}
+        finalize();
+
+        parent        = other.parent;
+        filePath      = other.filePath;
+        formatContext = other.formatContext;
+        codecContext  = other.codecContext;
+        codec         = other.codec;
+        audioStreamID = other.audioStreamID;
+        duration      = other.duration;
+        valid         = other.valid;
+
+        other.valid = false;
+        other.codec = nullptr;
+        other.codecContext = nullptr;
+        other.formatContext = nullptr;
     }
-    if (streamID == -1)
+
+    void OpenedTrack::markAsInvalid()
     {
-	throw logic_error(
-		string("No audio stream: ") + filePath.c_str()
-		);
+        valid = false;
     }
 
-    codecContext = container->streams[streamID]->codec;
-    codec = avcodec_find_decoder(codecContext->codec_id);
-    if (codec == nullptr)
+    bool OpenedTrack::isValid() const
     {
-	throw logic_error(
-		string("Could not find codec: ") + filePath.c_str()
-		);
+        return valid;
     }
-    if (avcodec_open2(codecContext, codec, nullptr) < 0)
+
+    OpenedTrack::~OpenedTrack()
     {
-	throw logic_error(
-		string("Could not open codec: ") + filePath.c_str()
-		);
+        finalize();
     }
 
-    opened = true;
-}
-
-void Track::close()
-{
-    avcodec_close(codecContext);
-    avformat_close_input(&container);
-    avformat_free_context(container);
-    opened = false;
-}
-
-void Track::decodeMetadata()
-{
-	name = getMetadata("title", {container->metadata, container->streams[streamID]->metadata}, filePath);
-	albumName = getMetadata("album", {container->metadata, container->streams[streamID]->metadata});
-	artistName = getMetadata("artist", {container->metadata, container->streams[streamID]->metadata});
-}
-
-void Track::testPrint()
-{
-    cout << format("\t\t%s: %s (%s)") % artistName.c_str() % name.c_str() % albumName.c_str() << endl;
-}
-
-Album::Album(const string& name) :
-    name(name) {};
-
-Album::~Album()
-{
-    tracksDeque.clear();
-    tracksMap.clear();
-}
-
-deque<shared_ptr<Track>> Album::getTracks()
-{
-    return tracksDeque;
-}
-
-void Album::addTrack(shared_ptr<Track> track)
-{
-    if (tracksMap.find(track->name) != tracksMap.end())
+    void OpenedTrack::finalize()
     {
-	track->name = track->name + "_";
-	addTrack(track);
+        if (codec != nullptr)
+        {
+            avcodec_close(codecContext);
+            codec = nullptr;
+            codecContext = nullptr;
+        }
+
+        if (formatContext != nullptr)
+        {
+            avformat_close_input(&formatContext);
+            formatContext = nullptr;
+        }
     }
-    else
+
+
+
+    Track::Track(const string& file)
     {
-	tracksMap[track->name] = track;
-	tracksDeque.push_back(track);
-    }
-}
+        filePath = file;
 
-void Album::testPrint()
-{
-    cout << format("\tStarting to print album %s\n") % name.c_str() << endl;
-    for (auto track : tracksDeque)
+        auto opened = open();
+        if (!opened.isValid())
+        {
+            log("Cannot read track data from %s") % filePath;
+            exit(1); //TODO: proper error handling
+        }
+
+        numSamples = (opened.duration * opened.codecContext->sample_rate).count();
+        duration = opened.duration;
+
+        name = getMetadata("title", {opened.formatContext->metadata, opened.formatContext->streams[opened.audioStreamID]->metadata});
+        if (name.empty())
+        {
+            name = filePath;
+        }
+
+        albumName = getMetadata("album", {opened.formatContext->metadata, opened.formatContext->streams[opened.audioStreamID]->metadata});
+        artistName = getMetadata("artist", {opened.formatContext->metadata, opened.formatContext->streams[opened.audioStreamID]->metadata});
+    }
+
+    OpenedTrack Track::open() const
     {
-	track->testPrint();
+        return OpenedTrack(this);
     }
-    cout << format("\tDone printing album %s\n") % name.c_str() << endl;
-}
 
-Artist::Artist(const string& name) :
-    name(name)
-{
-    shared_ptr<Album> temp(new Album(this->name + ": all"));
-    albumsDeque.push_back(temp);
-    albumsMap["all"] = temp;
-
-    temp.reset(new Album(this->name + ": unknown"));
-    albumsDeque.push_back(temp);
-    albumsMap["unknown"] = temp;
-}
-
-Artist::~Artist()
-{
-    albumsDeque.clear();
-    albumsMap.clear();  
-}
-
-deque<shared_ptr<Album>> Artist::getAlbums()
-{
-    return albumsDeque;
-}
-
-void Artist::addAlbum(shared_ptr<Album> album)
-{
-    albumsDeque.push_back(album); //TODO: this needs to check if such album already exists
-    albumsMap[album->name] = album;
-}
-
-void Artist::addTrack(shared_ptr<Track> track)
-{
-    if (albumsMap.find(track->albumName) == albumsMap.end())
+    void Track::testPrint() const
     {
-	shared_ptr<Album> temp(new Album(track->albumName));
-	albumsDeque.push_back(temp);
-	albumsMap[track->albumName] = temp;
+        cout << format("\t\t%s: %s (%s)") % artistName.c_str() % name.c_str() % albumName.c_str() << endl;
     }
-    albumsMap["all"]->addTrack(track);
-    albumsMap[track->albumName]->addTrack(track);
-}
 
-void Artist::testPrint()
-{
-    cout << format("Starting to print artist %s\n") % name.c_str() << endl;
-    for (auto album : albumsDeque)
+
+
+    Album::Album(const string& name) :
+        name(name) {};
+
+    void Album::addTrack(shared_ptr<Track> track)
     {
-	album->testPrint();
+        while (tracksMap.find(track->name) != tracksMap.end())
+        {
+            track->name = track->name + "_";
+            //NOTE: change real track name might be a bad idea
+            //      maybe only change its key in the map
+        }
+        tracksMap[track->name] = track;
+        tracks.push_back(track);
     }
-    cout << format("Done printing artist %s\n\n") % name.c_str() << endl;
+
+    list<shared_ptr<Track>> Album::getTracks() const
+    {
+        return tracks;
+    }
+
+    void Album::testPrint() const
+    {
+        cout << format("\tStarting to print album %s\n") % name.c_str() << endl;
+        for (auto track : tracks)
+        {
+            track->testPrint();
+        }
+        cout << format("\tDone printing album %s\n") % name.c_str() << endl;
+    }
+
+    Album::~Album()
+    {
+        tracks.clear();
+        tracksMap.clear();
+    }
+
+
+
+    Artist::Artist(const string& name) :
+        name(name)
+    {
+        allAlbums    = make_shared<Album>(name + ": all");
+        unknownAlbum = make_shared<Album>(name + ": unknown");
+    }
+
+    void Artist::addAlbum(shared_ptr<Album> album)
+    {
+        // An album with the same name should not exist
+        // If it exists, something has gone really wrong
+        albums.push_back(album);
+        albumsMap[album->name] = album;
+    }
+
+    void Artist::addTrack(shared_ptr<Track> track)
+    {
+        allAlbums->addTrack(track);
+
+        if (track->albumName.empty())
+        {
+            unknownAlbum->addTrack(track);
+            return;
+        }
+
+        if (albumsMap.find(track->albumName) == albumsMap.end())
+        {
+            shared_ptr<Album> temp = make_shared<Album>(track->albumName);
+            albums.push_back(temp);
+            albumsMap[track->albumName] = temp;
+        }
+
+        albumsMap[track->albumName]->addTrack(track);
+    }
+
+    list<shared_ptr<Track>> Artist::getTracks() const
+    {
+        return allAlbums->getTracks();
+    }
+
+    list<shared_ptr<Album>> Artist::getAlbums() const
+    {
+        return albums;
+    }
+
+    void Artist::testPrint() const
+    {
+        cout << format("Starting to print artist %s\n") % name.c_str() << endl;
+        unknownAlbum->testPrint();
+        for (auto album : albums)
+        {
+            album->testPrint();
+        }
+        cout << format("Done printing artist %s\n\n") % name.c_str() << endl;
+    }
+
+    Artist::~Artist()
+    {
+        albums.clear();
+        albumsMap.clear();  
+    }
 }

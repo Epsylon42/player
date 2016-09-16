@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ncurses.h>
-#include <deque>
+#include <list>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -14,7 +14,7 @@ class Window;
 class EmptyWindow;
 class MetaWindow;
 class ColumnWindow;
-template< typename DequeType > class DequeListingWindow;
+template< typename ListType > class ListListingWindow;
 class TracksListingWindow;
 class ArtistsListingWindow;
 class AlbumsListingWindow;
@@ -28,10 +28,10 @@ namespace interface
     extern std::shared_ptr<ColumnWindow> mainWindow;
     extern std::shared_ptr<Window> selectedWindow;
 
-	namespace DataDeques
+	namespace DataLists
 	{
-		extern std::deque<std::shared_ptr<Album>>  albumsDeque;
-		extern std::deque<std::shared_ptr<Track>>  tracksDeque;
+		extern std::list<std::shared_ptr<data::Album>>  albumsList;
+		extern std::list<std::shared_ptr<data::Track>>  tracksList;
 	}
 }
 
@@ -100,8 +100,8 @@ class MetaWindow : public Window
         virtual std::weak_ptr<Window> getSelected() override;
 
     protected:
-        std::deque<float> quotients;
-        std::deque<std::shared_ptr<Window>> windows;
+        std::list<float> quotients;
+        std::list<std::shared_ptr<Window>> windows;
         decltype(windows)::iterator selectedWindow;
 
         virtual void recalculateSizes() = 0;
@@ -134,47 +134,47 @@ class LineWindow : public MetaWindow
 };
 
 
-template< typename DequeType > 
-class DequeListingWindow : public Window
+template< typename ListType > 
+class ListListingWindow : public Window
 {
     public:
-	typename std::deque<DequeType>::iterator cursorPos;
-	typename std::deque<DequeType>::iterator screenStart;
+	typename std::list<ListType>::iterator cursorPos;
+	typename std::list<ListType>::iterator screenStart;
 
-	DequeListingWindow(int startY, int startX, int nlines, int ncols, std::deque<DequeType>& data);
+	ListListingWindow(int startY, int startX, int nlines, int ncols, std::list<ListType>& data);
 
 	virtual void update() override;
 	virtual void processKey(int ch)      override;
 
-	virtual ~DequeListingWindow()        override;
+	virtual ~ListListingWindow()        override;
 
     protected:
-	std::deque<DequeType>& data;
+	std::list<ListType>& data;
 
-    bool validateIterator(typename std::deque<DequeType>::iterator iter) const;
+    bool validateIterator(typename std::list<ListType>::iterator iter) const;
 
 	virtual void select() = 0;
 	virtual void press(int key)  = 0;
 
-	virtual std::string getName(typename std::deque<DequeType>::iterator iter) const = 0;
+	virtual std::string getName(typename std::list<ListType>::iterator iter) const = 0;
 
 	virtual void afterReshape()          override;
 };
 
-template< typename DequeType >
-class MediaListingWindow : public DequeListingWindow<DequeType>
+template< typename ListType >
+class MediaListingWindow : public ListListingWindow<ListType>
 {
     public:
 	template< typename ... Args >
 	    MediaListingWindow(Args&&... args) :
-		DequeListingWindow<DequeType>::DequeListingWindow(std::forward<Args>(args)...) {}
+		ListListingWindow<ListType>::ListListingWindow(std::forward<Args>(args)...) {}
 
-	virtual std::string getName(typename std::deque<DequeType>::iterator iter) const override;
+	virtual std::string getName(typename std::list<ListType>::iterator iter) const override;
 };
 
 
 
-class TracksListingWindow : public MediaListingWindow<std::shared_ptr<Track>>
+class TracksListingWindow : public MediaListingWindow<std::shared_ptr<data::Track>>
 {
     public:
 	template< typename ... Args >
@@ -186,7 +186,7 @@ class TracksListingWindow : public MediaListingWindow<std::shared_ptr<Track>>
 	virtual void press(int key)  override;
 };
 
-class AlbumsListingWindow : public MediaListingWindow<std::shared_ptr<Album>>
+class AlbumsListingWindow : public MediaListingWindow<std::shared_ptr<data::Album>>
 {
     public:
 	template< typename ... Args >
@@ -198,7 +198,7 @@ class AlbumsListingWindow : public MediaListingWindow<std::shared_ptr<Album>>
 	virtual void press(int key)  override;
 };
 
-class ArtistsListingWindow : public MediaListingWindow<std::shared_ptr<Artist>>
+class ArtistsListingWindow : public MediaListingWindow<std::shared_ptr<data::Artist>>
 {
     public:
 	template< typename ... Args >

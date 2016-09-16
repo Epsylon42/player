@@ -2,26 +2,43 @@
 
 #include <iostream>
 #include <utility>
+#include <algorithm>
 
 using namespace std;
+
+using data::Track;
+using data::Album;
+using data::Artist;
 
 // ABSTRACT PLAYLIST
 Playlist::Playlist(const string& name) : name(name) {}
 
+
+
 // SIMPLE PLAYLIST
 SimplePlaylist::SimplePlaylist(const string& name) : Playlist(name) {}
 
-SimplePlaylist::SimplePlaylist(const string& name, const deque<shared_ptr<Track>>& tracks) :
-    Playlist(name), tracks(tracks) {}
+SimplePlaylist::SimplePlaylist(const string& name, const list<shared_ptr<Track>>& tracks) :
+    Playlist(name), tracks(tracks) 
+{}
 
-    deque<shared_ptr<Track>> SimplePlaylist::getList() const
-{
-    return tracks;
-}
-
-void SimplePlaylist::addTrack(std::shared_ptr<Track> track)
+void SimplePlaylist::addTrack(shared_ptr<Track> track)
 {
     tracks.push_back(track);
+}
+
+void SimplePlaylist::removeTrack(shared_ptr<Track> track)
+{
+    auto trackIter = find(tracks.begin(), tracks.end(), track);
+    if (trackIter != tracks.end())
+    {
+        tracks.erase(trackIter);
+    }
+}
+
+list<shared_ptr<Track>> SimplePlaylist::getTracks() const
+{
+    return tracks;
 }
 
 void SimplePlaylist::testPrint() const
@@ -29,35 +46,29 @@ void SimplePlaylist::testPrint() const
     cout << "starting to print playlist " << name << endl;
     for (auto &track : tracks)
     {
-	track->testPrint();
+        track->testPrint();
     }
     cout << "done printing playlist " << name << endl;
 }
 
+
+
 // SMART PLAYLIST
-SmartPlaylist::SmartPlaylist(const string& name) : Playlist(name) {}
+SmartPlaylist::SmartPlaylist(const string& name, std::unique_ptr<Condition> condition) : 
+    Playlist(name),
+    condition(move(condition))
+{}
 
-void SmartPlaylist::addAND_Condition(unique_ptr<Condition> cond)
+list<shared_ptr<Track>> SmartPlaylist::getTracks() const
 {
-    AND_condition.addCondition(move(cond));
-}
+    list<shared_ptr<Track>> ret;
 
-void SmartPlaylist::addOR_Condition(unique_ptr<Condition> cond)
-{
-    OR_condition.addCondition(move(cond));
-}
-
-deque<shared_ptr<Track>> SmartPlaylist::getList() const
-{
-    deque<shared_ptr<Track>> ret;
-
-    auto tracks = getTracks();
-    for (auto &track : tracks)
+    for (auto &track : data::allArtists->getTracks())
     {
-	if(AND_condition.check(track) && OR_condition.check(track))
-	{
-	    ret.push_back(track);
-	}
+        if(condition->check(track))
+        {
+            ret.push_back(track);
+        }
     }
 
     return ret;
@@ -66,9 +77,9 @@ deque<shared_ptr<Track>> SmartPlaylist::getList() const
 void SmartPlaylist::testPrint() const
 {
     cout << "starting to print playlist " << name << endl;
-    for (auto &track : getList())
+    for (auto &track : data::allArtists->getTracks())
     {
-	track->testPrint();
+        track->testPrint();
     }
     cout << "done printing playlist " << name << endl;   
 }
@@ -104,20 +115,26 @@ bool ArtistNameCondition::check(const shared_ptr<Track>& track) const
 }
 
 
-// AND
-void AND_Condition::addCondition(unique_ptr<Condition> cond)
-{
-    conditions.push_back(move(cond));
-}
+// LOGICAL
+LogicalCondition::LogicalCondition(vector<unique_ptr<Condition>> conditions) :
+    conditions(move(conditions))
+{}
 
+
+// AND
 bool AND_Condition::check(const shared_ptr<Track>& track) const
 {
+    if (conditions.empty())
+    {
+        return true;
+    }
+
     for (auto &cond : conditions)
     {
-	if (!cond->check(track))
-	{
-	    return false;
-	}
+        if (!cond->check(track))
+        {
+            return false;
+        }
     }
 
     return true;
@@ -125,24 +142,19 @@ bool AND_Condition::check(const shared_ptr<Track>& track) const
 
 
 // OR
-void OR_Condition::addCondition(unique_ptr<Condition> cond)
-{
-    conditions.push_back(move(cond));
-}
-
 bool OR_Condition::check(const shared_ptr<Track>& track) const
 {
-    if (conditions.size() == 0)
+    if (conditions.empty())
     {
-	return true;
+        return true;
     }
 
     for (auto &cond : conditions)
     {
-	if (cond->check(track))
-	{
-	    return true;
-	}
+        if (cond->check(track))
+        {
+            return true;
+        }
     }
 
     return false;
