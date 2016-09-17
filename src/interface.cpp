@@ -40,8 +40,23 @@ void initInterface()
 
     mainWindow = make_shared<ColumnWindow>(0, 0, sizeY, sizeX);
 
-    DataLists::albumsList = data::artists.front()->getAlbums();
-    DataLists::tracksList = DataLists::albumsList.front()->getTracks();
+    if (!data::allArtists->allAlbums->tracks.empty())
+    {
+        DataLists::albumsList = data::allArtists->getAlbums();
+    }
+    else
+    {
+        DataLists::albumsList = {};
+    }
+
+    if (!DataLists::tracksList.empty())
+    {
+        DataLists::tracksList = DataLists::albumsList.front()->getTracks();
+    }
+    else
+    {
+        DataLists::tracksList = {};
+    }
 
     auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataLists::tracksList);
     auto albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, DataLists::albumsList);
@@ -515,6 +530,11 @@ bool ListListingWindow<ListType>::validateIterator(typename std::list<ListType>:
     template< typename ListType >
 void ListListingWindow<ListType>::update()
 {
+    if (data.empty())
+    {
+        return;
+    }
+
     if (!validateIterator(cursorPos) || !validateIterator(screenStart))
     {
         cursorPos = data.begin();
@@ -603,6 +623,11 @@ void TracksListingWindow::select()
 
 void TracksListingWindow::press(int key)
 {
+    if (data.empty())
+    {
+        return;
+    }
+
     set<PlaybackOption> options;
     switch (key)
     {
@@ -619,11 +644,21 @@ void TracksListingWindow::press(int key)
 
 void AlbumsListingWindow::select()
 {
+    if (data.empty())
+    {
+        return;
+    }
+
     DataLists::tracksList = (*cursorPos)->getTracks();
 }
 
 void AlbumsListingWindow::press(int key)
 {
+    if (data.empty())
+    {
+        return;
+    }
+
     set<PlaybackOption> options = {PlaybackOption::shuffle};
     switch (key)
     {
@@ -640,12 +675,22 @@ void AlbumsListingWindow::press(int key)
 
 void ArtistsListingWindow::select()
 {
+    if (data.empty())
+    {
+        return;
+    }
+
     DataLists::albumsList = (*cursorPos)->getAlbums();
     DataLists::tracksList = DataLists::albumsList.front()->getTracks();
 }
 
 void ArtistsListingWindow::press(int key)
 {
+    if (data.empty())
+    {
+        return;
+    }
+
     set<PlaybackOption> options = {PlaybackOption::shuffle};
     switch (key)
     {
