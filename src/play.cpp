@@ -89,13 +89,12 @@ namespace playback
 
             if (track.pipeline->get_bus()->poll(Gst::MESSAGE_EOS, 0))
             {
-                break;
+                track.markAsInvalid();
+                return {};
             }
 
             this_thread::sleep_for(50ms);
         }
-
-        return {};
     }
 
     void startPlayback(shared_ptr<Artist> artist, PlaybackOptions options)
@@ -232,11 +231,13 @@ namespace playback
 
                     if (!opened.isValid())
                     {
+                        log(LT::error, "Could not open track %s") % currentTrack->name;
                         continue;
                     }
                 }
 
                 NowPlaying::track = currentTrack;
+                NowPlaying::playing = true;
                 unique_ptr<Command> command = playTrack(opened);
                 if (!command)
                 {

@@ -546,7 +546,9 @@ void ListListingWindow<ListType>::update()
     {
         if (p == data.end())
         {
-            break;
+            wmove(nwindow, i, 1);
+            wclrtoeol(nwindow);
+            continue;
         }
         wmove(nwindow, i, 1);
         wclrtoeol(nwindow);
@@ -764,29 +766,34 @@ void PlaybackControlWindow::playbackWindowThread()
 
         if (playbackInProcess() && play::NowPlaying::track)
         {
-            wmove(nwindow, 0, 1);
-            wclrtoeol(nwindow);
-
-            wattron(nwindow, A_BOLD);
-            wprintw(nwindow, "Track: ");
-            wattroff(nwindow, A_BOLD);
-
-            wprintw(nwindow, "%s", play::NowPlaying::track->name.c_str());
-
-
             wmove(nwindow, 1, 1);
             wclrtoeol(nwindow);
 
-            wattron(nwindow, A_BOLD);
-            if (play::playbackPause)
+            wmove(nwindow, 0, 1);
+            wclrtoeol(nwindow);
+
+            if (playbackInProcess())
             {
-                wprintw(nwindow, "Paused:  ");
+                wattron(nwindow, A_BOLD);
+                wprintw(nwindow, "Track: ");
+                wattroff(nwindow, A_BOLD);
+
+                wprintw(nwindow, "%s", play::NowPlaying::track->name.c_str());
+
+                wmove(nwindow, 1, 1);
+                wclrtoeol(nwindow);
+
+                wattron(nwindow, A_BOLD);
+                if (play::playbackPause)
+                {
+                    wprintw(nwindow, "Paused:  ");
+                }
+                else
+                {
+                    wprintw(nwindow, "Playing: ");
+                }
+                wattroff(nwindow, A_BOLD);
             }
-            else
-            {
-                wprintw(nwindow, "Playing: ");
-            }
-            wattroff(nwindow, A_BOLD);
 
             //{
                 ////FIXME: stops showing correct time after two minutes
@@ -802,13 +809,13 @@ void PlaybackControlWindow::playbackWindowThread()
             //}
 
 
-            wmove(nwindow, 2, 1);
-            wclrtoeol(nwindow);
+            //wmove(nwindow, 2, 1);
+            //wclrtoeol(nwindow);
 
-            wattron(nwindow, A_BOLD);
-            wprintw(nwindow, "Queued: ");
-            wattroff(nwindow, A_BOLD);
-            wprintw(nwindow, "%d", play::playbackControl.size()); //FIXME: it prints number of all commands, not only tracks
+            //wattron(nwindow, A_BOLD);
+            //wprintw(nwindow, "Queued: ");
+            //wattroff(nwindow, A_BOLD);
+            //wprintw(nwindow, "%d", play::playbackControl.size()); //FIXME: it prints number of all commands, not only tracks
 
 
             Window::update();

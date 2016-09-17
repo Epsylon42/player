@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <regex>
 
 #include <boost/format.hpp>
 
@@ -149,6 +150,10 @@ namespace data
 
     void OpenedTrack::markAsInvalid()
     {
+        if (valid)
+        {
+            pipeline->set_state(Gst::STATE_NULL);
+        }
         valid = false;
     }
 
@@ -186,7 +191,14 @@ namespace data
         Glib::ustring str;
         bool readSuccess;
         readSuccess = list.get(Gst::TAG_TITLE, str);
-        name = (readSuccess ? str : "unnamed");
+        if (readSuccess)
+        {
+            name = str;
+        }
+        else
+        {
+            name = regex_replace(filepath, regex(".*/(.*)"), "$1");
+        }
 
         readSuccess = list.get(Gst::TAG_ALBUM, str);
         albumName = (readSuccess ? str : "unknown");
