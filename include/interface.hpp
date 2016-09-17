@@ -33,7 +33,9 @@ namespace interface
 	namespace DataLists
 	{
 		extern std::list<std::shared_ptr<data::Album>>  albumsList;
+        extern bool albumsUpdated;
 		extern std::list<std::shared_ptr<data::Track>>  tracksList;
+        extern bool tracksUpdated;
 	}
 }
 
@@ -142,8 +144,9 @@ class ListListingWindow : public Window
     public:
 	typename std::list<ListType>::iterator cursorPos;
 	typename std::list<ListType>::iterator screenStart;
+    typename std::list<ListType>::iterator screenEnd;
 
-	ListListingWindow(int startY, int startX, int nlines, int ncols, std::list<ListType>& data);
+	ListListingWindow(int startY, int startX, int nlines, int ncols, std::list<ListType>& data, bool& dataUpdated);
 
 	virtual void update() override;
 	virtual void processKey(int ch)      override;
@@ -152,8 +155,11 @@ class ListListingWindow : public Window
 
     protected:
 	std::list<ListType>& data;
+    bool& dataUpdated;
 
     bool validateIterator(typename std::list<ListType>::iterator iter) const;
+
+    void updateScreenIters();
 
 	virtual void select() = 0;
 	virtual void press(int key)  = 0;

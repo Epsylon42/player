@@ -27,6 +27,8 @@ shared_ptr<ColumnWindow> interface::mainWindow;
 
 list<shared_ptr<Album>>  interface::DataLists::albumsList;
 list<shared_ptr<Track>>  interface::DataLists::tracksList;
+bool interface::DataLists::albumsUpdated = true;
+bool interface::DataLists::tracksUpdated = true;
 
 void initInterface()
 {
@@ -34,6 +36,8 @@ void initInterface()
     halfdelay(10);
     curs_set(FALSE);
     noecho();
+    start_color();
+    init_pair(1, COLOR_GREEN, COLOR_BLACK);
 
     sizeX = getmaxx(stdscr);
     sizeY = getmaxy(stdscr);
@@ -58,9 +62,10 @@ void initInterface()
         DataLists::tracksList = {};
     }
 
-    auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataLists::tracksList);
-    auto albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, DataLists::albumsList);
-    auto artistsWindow = make_shared<ArtistsListingWindow>(0, 0, 0, 0, data::artists);
+    auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataLists::tracksList, DataLists::tracksUpdated);
+    auto albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, DataLists::albumsList, DataLists::albumsUpdated);
+    static bool artistUpd = true; //TODO: replace this with actual update flag
+    auto artistsWindow = make_shared<ArtistsListingWindow>(0, 0, 0, 0, data::artists, artistUpd);
     auto playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 0, 0);
 
     auto line1 = make_shared<LineWindow>(0, 0, 0, 0);
@@ -110,6 +115,94 @@ void updateWindows()
     }
 
     mainWindow->update();
+
+    if (auto selectedWindow = mainWindow->getSelected().lock())
+    {
+        auto& nwindow = selectedWindow->nwindow;
+        int x = nwindow->_begx-1;
+        int y = nwindow->_begy-1;
+        int mx = nwindow->_maxx+nwindow->_begx+1;
+        int my = nwindow->_maxy+nwindow->_begy+1;
+
+        unique_ptr<WINDOW> stdscr(::stdscr);
+
+        if (has_colors())
+        {
+            wattron(stdscr, COLOR_PAIR(1));
+        }
+        else
+        {
+            wattron(stdscr, A_REVERSE);
+        }
+
+        for (int i = 1; i <= getmaxx(nwindow.get()); i++)
+        {
+            if (y >= 0)
+            {
+                wmove(stdscr, y, x+i);
+                wprintw(stdscr, "-");
+            }
+            if (my < getmaxy(stdscr.get()))
+            {
+                wmove(stdscr, my, x+i);
+                wprintw(stdscr, "-");
+            }
+        }
+
+        for (int i = 1; i <= getmaxy(nwindow.get()); i++)
+        {
+            if (x >= 0)
+            {
+                wmove(stdscr, y+i, x);
+                wprintw(stdscr, "|");
+            }
+            if (mx < getmaxx(stdscr.get()))
+            {
+                wmove(stdscr, y+i, mx);
+                wprintw(stdscr, "|");
+            }
+        }
+
+        if (x >= 0 && y >= 0)
+        {
+            wmove(stdscr, y, x);
+            wprintw(stdscr, "+");
+        }
+
+        if (mx < getmaxx(stdscr.get()) && y >= 0)
+        {
+            wmove(stdscr, y, mx);
+            wprintw(stdscr, "+");
+        }
+
+        if (x >= 0 && my < getmaxy(stdscr.get()))
+        {
+            wmove(stdscr, my, x);
+            wprintw(stdscr, "+");
+        }
+
+        if(mx < getmaxx(stdscr.get()) && my < getmaxy(stdscr.get()))
+        {
+            wmove(stdscr, my, mx);
+            wprintw(stdscr, "+");
+        }
+
+        if (has_colors())
+        {
+            wattroff(stdscr, COLOR_PAIR(1));
+        }
+        else
+        {
+            wattroff(stdscr, A_REVERSE);
+        }
+
+        interfaceMutex.lock();
+        wrefresh(stdscr);
+        interfaceMutex.unlock();
+
+        stdscr.release();
+
+    }
 }
 
 void fullRefresh()
@@ -495,12 +588,27 @@ void LineWindow::recalculateSizes()
     template< typename ListType >
 void ListListingWindow<ListType>::afterReshape()
 {
+    updateScreenIters();
+}
+
+    template< typename ListType >
+void ListListingWindow<ListType>::updateScreenIters()
+{
     screenStart = cursorPos;
+    screenEnd = screenStart;
+    for (int i = 0; i < nlines; i++)
+    {
+        if (screenEnd == data.end())
+        {
+            break;
+        }
+        ++screenEnd;
+    }
 }
 
 template< typename ListType >
-ListListingWindow<ListType>::ListListingWindow(int startY, int startX, int nlines, int ncols, list<ListType>& data) :
-    Window(startY, startX, nlines, ncols), data(data)
+ListListingWindow<ListType>::ListListingWindow(int startY, int startX, int nlines, int ncols, list<ListType>& data, bool& dataUpdated) :
+    Window(startY, startX, nlines, ncols), data(data), dataUpdated(dataUpdated)
 {
     cursorPos   = this->data.begin();
     screenStart = this->data.begin();
@@ -512,21 +620,6 @@ ListListingWindow<ListType>::~ListListingWindow()
 
 }
 
-    template < typename ListType >
-bool ListListingWindow<ListType>::validateIterator(typename std::list<ListType>::iterator iter) const
-//FIXME: SOOOOOO SLOOOOOOWWWW
-{
-    for (auto cmp = data.begin(); cmp != data.end(); ++cmp)
-    {
-        if (iter == cmp)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
     template< typename ListType >
 void ListListingWindow<ListType>::update()
 {
@@ -535,24 +628,25 @@ void ListListingWindow<ListType>::update()
         return;
     }
 
-    if (!validateIterator(cursorPos) || !validateIterator(screenStart))
+    if (dataUpdated)
     {
         cursorPos = data.begin();
-        screenStart = data.begin();
+        updateScreenIters();
+        dataUpdated = false;
     }
 
-    auto p = screenStart;
     for (int i = 0; i < nlines; i++)
     {
-        if (p == data.end())
-        {
-            wmove(nwindow, i, 1);
-            wclrtoeol(nwindow);
-            continue;
-        }
         wmove(nwindow, i, 1);
         wclrtoeol(nwindow);
-        if (p == cursorPos)
+    }
+
+    int line = 0;
+    for (auto iter = screenStart; iter != screenEnd && iter != data.end(); ++iter)
+    {
+        wmove(nwindow, line++, 1);
+        wclrtoeol(nwindow);
+        if (iter == cursorPos)
         {
             wattron(nwindow, A_REVERSE);
 
@@ -561,9 +655,8 @@ void ListListingWindow<ListType>::update()
                 wattron(nwindow, A_BOLD);
             }
         }
-        wprintw(nwindow, "%s", getName(p).c_str());
+        wprintw(nwindow, "%s", getName(iter).c_str());
         wattroff(nwindow, A_REVERSE | A_BOLD);
-        ++p;
     }
 
     Window::update();
@@ -581,6 +674,7 @@ void ListListingWindow<ListType>::processKey(int ch)
                 if (cursorPos == screenStart)
                 {
                     --screenStart;
+                    --screenEnd;
                 }
                 --cursorPos;
                 select();
@@ -590,9 +684,10 @@ void ListListingWindow<ListType>::processKey(int ch)
         case KEY_DOWN:
             if (cursorPos != prev(data.end()))
             {
-                if (cursorPos == next(screenStart, nlines-1))
+                if (cursorPos == prev(screenEnd))
                 {
                     ++screenStart;
+                    ++screenEnd;
                 }
                 ++cursorPos;
                 select();
@@ -652,6 +747,7 @@ void AlbumsListingWindow::select()
     }
 
     DataLists::tracksList = (*cursorPos)->getTracks();
+    DataLists::tracksUpdated = true;
 }
 
 void AlbumsListingWindow::press(int key)
@@ -684,6 +780,8 @@ void ArtistsListingWindow::select()
 
     DataLists::albumsList = (*cursorPos)->getAlbums();
     DataLists::tracksList = DataLists::albumsList.front()->getTracks();
+    DataLists::albumsUpdated = true;
+    DataLists::tracksUpdated = true;
 }
 
 void ArtistsListingWindow::press(int key)
