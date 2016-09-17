@@ -17,35 +17,6 @@
 
 using namespace std;
 
-void sortLibrary()
-{
-    using namespace data;
-
-    artists.sort(
-            [](shared_ptr<Artist> fst, shared_ptr<Artist> snd)
-            {
-                return fst->name < snd->name;
-            });
-
-    for (auto artist : artists)
-    {
-        artist->albums.sort(
-                [](shared_ptr<Album> fst, shared_ptr<Album> snd)
-                {
-                    return fst->name < snd->name;
-                });
-
-        for (auto album : artist->albums)
-        {
-            album->tracks.sort(
-                    [](shared_ptr<Track> fst, shared_ptr<Track> snd)
-                    {
-                        return fst->name < snd->name;
-                    });
-        }
-    }
-}
-
 void segfaultHandler(int)
 {
     endwin();
@@ -66,7 +37,6 @@ int main(int argc, char** argv)
     {
         data::addTrack(make_shared<data::Track>(argv[i]));
     }
-    sortLibrary();
 
     playback::init();
 

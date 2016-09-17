@@ -51,11 +51,23 @@ namespace data
         if (artistsMap.find(track->artistName) == artistsMap.end())
         {
             shared_ptr<Artist> temp = make_shared<Artist>(track->artistName);
-            artists.push_back(temp);
+            temp->addTrack(track);
             artistsMap[track->artistName] = temp;
+            artists.insert(lower_bound(
+                        artists.begin(),
+                        artists.end(),
+                        temp,
+                        [](shared_ptr<Artist> fst, shared_ptr<Artist> snd)
+                        {
+                            return fst->name < snd->name;
+                        }
+                        ),
+                    temp);
         }
-
-        artistsMap[track->artistName]->addTrack(track);
+        else
+        {
+            artistsMap[track->artistName]->addTrack(track);
+        }
     }
 
     list<shared_ptr<Artist>> getArtists()
@@ -237,7 +249,15 @@ namespace data
             //      maybe only change its key in the map
         }
         tracksMap[track->name] = track;
-        tracks.push_back(track);
+        tracks.insert(lower_bound(
+                    tracks.begin(), 
+                    tracks.end(), 
+                    track,
+                    [](shared_ptr<Track> fst, shared_ptr<Track> snd)
+                    {
+                        return fst->name < snd->name;
+                    }),
+                track);
     }
 
     list<shared_ptr<Track>> Album::getTracks() const
@@ -274,8 +294,17 @@ namespace data
     {
         // An album with the same name should not exist
         // If it exists, something has gone really wrong
-        albums.push_back(album);
         albumsMap[album->name] = album;
+        albums.insert(lower_bound(
+                    albums.begin(),
+                    albums.end(),
+                    album,
+                    [](shared_ptr<Album> fst, shared_ptr<Album> snd)
+                    {
+                        return fst->name < snd->name;
+                    }
+                    ),
+                album);
     }
 
     void Artist::addTrack(shared_ptr<Track> track)
@@ -291,11 +320,13 @@ namespace data
         if (albumsMap.find(track->albumName) == albumsMap.end())
         {
             shared_ptr<Album> temp = make_shared<Album>(track->albumName);
-            albums.push_back(temp);
-            albumsMap[track->albumName] = temp;
+            temp->addTrack(track);
+            addAlbum(temp);
         }
-
-        albumsMap[track->albumName]->addTrack(track);
+        else
+        {
+            albumsMap[track->albumName]->addTrack(track);
+        }
     }
 
     list<shared_ptr<Track>> Artist::getTracks() const
