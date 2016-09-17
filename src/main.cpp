@@ -13,6 +13,7 @@
 #include <iostream>
 
 #include <ncurses.h>
+#include <signal.h>
 
 using namespace std;
 
@@ -45,8 +46,16 @@ void sortLibrary()
     }
 }
 
+void segfaultHandler(int)
+{
+    endwin();
+    cerr << "Segmentation fault" << endl;
+    exit(1);
+}
+
 int main(int argc, char** argv)
 {
+    signal(SIGSEGV, segfaultHandler);
     setlocale(LC_ALL, "");
     Gst::init(argc, argv);
 
