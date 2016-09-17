@@ -2,6 +2,18 @@
 
 #include <string>
 #include <ostream>
+#include <chrono>
+#include <ctime>
+
+enum class LogType
+{
+    error,
+    warning,
+    debug,
+    info
+};
+
+using LT = LogType;
 
 class Log
 {
@@ -24,6 +36,15 @@ class Log
 
     ~Log()
     {
+        auto timestamp = std::chrono::system_clock().to_time_t(std::chrono::system_clock().now());
+        std::string timestampStr = std::ctime(&timestamp);
+        //
+        // remove newline
+        //FIXME: Might not work on windows/dos
+        timestampStr.erase(timestampStr.size()-1, 1); 
+
+        out << timestampStr << ": ";
+
         out << fmt;
 
         if (newLine)
@@ -38,6 +59,8 @@ class Log
 };
 
 Log log(const std::string& formatString = "");
+
+Log log(LogType type, const std::string& formatString);
 
 // does not add a newline at the end
 Log logPart(const std::string& formatString);

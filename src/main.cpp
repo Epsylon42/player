@@ -50,6 +50,7 @@ void segfaultHandler(int)
 {
     endwin();
     cerr << "Segmentation fault" << endl;
+    log(LT::error, "Segmentation fault");
     exit(1);
 }
 
