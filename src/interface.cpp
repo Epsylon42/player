@@ -13,6 +13,8 @@
 #include <chrono>
 #include <algorithm>
 
+#include <stdio.h>
+
 using namespace std;
 using namespace interface;
 using namespace data;
@@ -238,8 +240,11 @@ bool readKey()
             // TODO: override operator new to return static value.
             sendPlaybackCommand(new CommandTOGGLE());
             break;
-        case 'E': // (E)nd
+        case 'e': // (E)nd
             sendPlaybackCommand(new CommandSTOP());
+            break;
+        case 'E':
+            sendPlaybackCommand(new CommandSTOPALL());
             break;
         case '<':
             sendPlaybackCommand(new CommandPREVIOUS());
@@ -730,16 +735,31 @@ void TracksListingWindow::press(int key)
     }
 
     set<PlaybackOption> options;
+    bool play = true;
     switch (key)
     {
         case 's':
-            options.insert(PlaybackOption::queue);
+            options.insert(PlaybackOption::stopCurrentPlayback);
+            break;
         case 'S':
-            startPlayback(*cursorPos, options);
+            break;
+        case 'd':
+            options.insert(PlaybackOption::playAfterCurrentTrack);
+            break;
+        case 'D':
+            options.insert(PlaybackOption::playAfterCurrentList);
+            break;
+        case 'f':
+            options.insert(PlaybackOption::suspendCurrentPlayback);
             break;
 
         default:
+            play = false;
             break;
+    }
+    if (play)
+    {
+        startPlayback(*cursorPos, options);
     }
 }
 
@@ -762,16 +782,31 @@ void AlbumsListingWindow::press(int key)
     }
 
     set<PlaybackOption> options = {PlaybackOption::shuffle};
+    bool play = true;
     switch (key)
     {
         case 's':
-            options.insert(PlaybackOption::queue);
+            options.insert(PlaybackOption::stopCurrentPlayback);
+            break;
         case 'S':
-            startPlayback(*cursorPos, options);
+            break;
+        case 'd':
+            options.insert(PlaybackOption::playAfterCurrentTrack);
+            break;
+        case 'D':
+            options.insert(PlaybackOption::playAfterCurrentList);
+            break;
+        case 'f':
+            options.insert(PlaybackOption::suspendCurrentPlayback);
             break;
 
         default:
+            play = false;
             break;
+    }
+    if (play)
+    {
+        startPlayback(*cursorPos, options);
     }
 }
 
@@ -796,16 +831,31 @@ void ArtistsListingWindow::press(int key)
     }
 
     set<PlaybackOption> options = {PlaybackOption::shuffle};
+    bool play = true;
     switch (key)
     {
         case 's':
-            options.insert(PlaybackOption::queue);
+            options.insert(PlaybackOption::stopCurrentPlayback);
+            break;
         case 'S':
-            startPlayback(*cursorPos, options);
+            break;
+        case 'd':
+            options.insert(PlaybackOption::playAfterCurrentTrack);
+            break;
+        case 'D':
+            options.insert(PlaybackOption::playAfterCurrentList);
+            break;
+        case 'f':
+            options.insert(PlaybackOption::suspendCurrentPlayback);
             break;
 
         default:
+            play = false;
             break;
+    }
+    if (play)
+    {
+        startPlayback(*cursorPos, options);
     }
 }
 
@@ -895,6 +945,21 @@ void PlaybackControlWindow::playbackWindowThread()
                     wprintw(nwindow, "Playing: ");
                 }
                 wattroff(nwindow, A_BOLD);
+            }
+
+            //wprintw(nwindow, "%d / %d", play::NowPlaying::current, play::NowPlaying::duration);
+            {
+                char* duration = new char[10];
+                char* current = new char[10];
+
+                snprintf(duration, 10, "%" GST_TIME_FORMAT, GST_TIME_ARGS(play::NowPlaying::duration));
+                snprintf(current, 10, "%" GST_TIME_FORMAT, GST_TIME_ARGS(play::NowPlaying::current));
+                replace(duration, duration+10, '.', '\0');
+                replace(current, current+10, '.', '\0');
+                wprintw(nwindow, "%s / %s", current, duration);
+
+                delete [] duration;
+                delete [] current;
             }
 
             //{

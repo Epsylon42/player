@@ -30,7 +30,6 @@ namespace playback
         suspendCurrentPlayback,
         playAfterCurrentList,
         playAfterCurrentTrack,
-        queue
     };
 
     using PlaybackOptions = Options<PlaybackOption>;
@@ -53,6 +52,8 @@ namespace playback
     {
         extern std::shared_ptr<data::Track> track;
         extern bool playing;
+        extern gint64 duration;
+        extern gint64 current;
 
         void reset();
     }

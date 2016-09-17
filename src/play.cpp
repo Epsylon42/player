@@ -28,6 +28,8 @@ namespace playback
 {
     shared_ptr<Track> NowPlaying::track;
     bool              NowPlaying::playing = false;
+    gint64              NowPlaying::duration = 0;
+    gint64              NowPlaying::current = 0;
 
 
     queue<unique_ptr<Command>>           playbackControl;
@@ -54,6 +56,8 @@ namespace playback
     unique_ptr<Command> playTrack(data::OpenedTrack& track)
     {
         track.pipeline->set_state(Gst::STATE_PLAYING);
+
+
         while (true)
         {
             unique_ptr<Command> command = getPlaybackCommand();
@@ -92,6 +96,9 @@ namespace playback
                 track.markAsInvalid();
                 return {};
             }
+
+            track.pipeline->query_position(Gst::FORMAT_TIME, NowPlaying::current);
+            track.pipeline->query_duration(Gst::FORMAT_TIME, NowPlaying::duration);
 
             this_thread::sleep_for(50ms);
         }
@@ -420,5 +427,7 @@ end:    NowPlaying::reset();
     void NowPlaying::reset()
     {
         track.reset();
+        duration = 0;
+        current = 0;
     }
 }
