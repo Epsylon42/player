@@ -32,6 +32,8 @@ namespace interface
 
 	namespace DataLists
 	{
+        extern std::list<std::shared_ptr<data::Artist>> artistsList;
+        extern bool artistsUpdated;
 		extern std::list<std::shared_ptr<data::Album>>  albumsList;
         extern bool albumsUpdated;
 		extern std::list<std::shared_ptr<data::Track>>  tracksList;

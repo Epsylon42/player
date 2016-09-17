@@ -201,10 +201,16 @@ namespace data
         }
 
         readSuccess = list.get(Gst::TAG_ALBUM, str);
-        albumName = (readSuccess ? str : "unknown");
+        if (readSuccess)
+        {
+            albumName = str;
+        }
 
         readSuccess = list.get(Gst::TAG_ARTIST, str);
-        artistName = (readSuccess ? str : "unknown");
+        if (readSuccess)
+        {
+            artistName = str;
+        }
     }
 
     OpenedTrack Track::open() const
@@ -299,7 +305,10 @@ namespace data
 
     list<shared_ptr<Album>> Artist::getAlbums() const
     {
-        return albums;
+        auto ret = albums;
+        ret.push_front(unknownAlbum);
+        ret.push_front(allAlbums);
+        return ret;
     }
 
     void Artist::testPrint() const

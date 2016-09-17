@@ -25,8 +25,10 @@ int interface::sizeX;
 int interface::sizeY;
 shared_ptr<ColumnWindow> interface::mainWindow;
 
+list<shared_ptr<Artist>> interface::DataLists::artistsList;
 list<shared_ptr<Album>>  interface::DataLists::albumsList;
 list<shared_ptr<Track>>  interface::DataLists::tracksList;
+bool interface::DataLists::artistsUpdated= true;
 bool interface::DataLists::albumsUpdated = true;
 bool interface::DataLists::tracksUpdated = true;
 
@@ -43,6 +45,8 @@ void initInterface()
     sizeY = getmaxy(stdscr);
 
     mainWindow = make_shared<ColumnWindow>(0, 0, sizeY, sizeX);
+
+    DataLists::artistsList = data::getArtists();
 
     if (!data::allArtists->allAlbums->tracks.empty())
     {
@@ -65,7 +69,7 @@ void initInterface()
     auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataLists::tracksList, DataLists::tracksUpdated);
     auto albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, DataLists::albumsList, DataLists::albumsUpdated);
     static bool artistUpd = true; //TODO: replace this with actual update flag
-    auto artistsWindow = make_shared<ArtistsListingWindow>(0, 0, 0, 0, data::artists, artistUpd);
+    auto artistsWindow = make_shared<ArtistsListingWindow>(0, 0, 0, 0, DataLists::artistsList, DataLists::artistsUpdated);
     auto playbackWindow = make_shared<PlaybackControlWindow>(0, 0, 0, 0);
 
     auto line1 = make_shared<LineWindow>(0, 0, 0, 0);
