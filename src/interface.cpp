@@ -34,6 +34,8 @@ bool interface::DataLists::artistsUpdated= true;
 bool interface::DataLists::albumsUpdated = true;
 bool interface::DataLists::tracksUpdated = true;
 
+bool doShuffle = false;
+
 void initInterface()
 {
     initscr();
@@ -251,6 +253,9 @@ bool readKey()
             break;
         case '>':
             sendPlaybackCommand(new CommandNEXT());
+            break;
+        case 't': //(t)oggle shuffle
+            doShuffle = !doShuffle;
             break;
         default:
             {
@@ -782,7 +787,12 @@ void AlbumsListingWindow::press(int key)
         return;
     }
 
-    set<PlaybackOption> options = {PlaybackOption::shuffle};
+    set<PlaybackOption> options;
+    if (doShuffle)
+    {
+        options.insert(PlaybackOption::shuffle);
+    }
+
     bool play = true;
     switch (key)
     {
@@ -832,7 +842,12 @@ void ArtistsListingWindow::press(int key)
         return;
     }
 
-    set<PlaybackOption> options = {PlaybackOption::shuffle};
+    set<PlaybackOption> options;
+    if (doShuffle)
+    {
+        options.insert(PlaybackOption::shuffle);
+    }
+
     bool play = true;
     switch (key)
     {
@@ -921,14 +936,9 @@ void PlaybackControlWindow::playbackWindowThread()
 
         if (playbackInProcess() && play::NowPlaying::track)
         {
-            wmove(nwindow, 1, 1);
-            wclrtoeol(nwindow);
-
-            wmove(nwindow, 0, 1);
-            wclrtoeol(nwindow);
-
             if (playbackInProcess())
             {
+                wmove(nwindow, 0, 1);
                 wattron(nwindow, A_BOLD);
                 wprintw(nwindow, "Track: ");
                 wattroff(nwindow, A_BOLD);
@@ -950,7 +960,6 @@ void PlaybackControlWindow::playbackWindowThread()
                 wattroff(nwindow, A_BOLD);
             }
 
-            //wprintw(nwindow, "%d / %d", play::NowPlaying::current, play::NowPlaying::duration);
             {
                 char* duration = new char[10];
                 char* current = new char[10];
@@ -965,35 +974,22 @@ void PlaybackControlWindow::playbackWindowThread()
                 delete [] current;
             }
 
-            //{
-                ////FIXME: stops showing correct time after two minutes
+        }
 
-                //using namespace chrono;
-
-                //shared_ptr<Track>& track = play::NowPlaying::track;
-
-                //seconds sec(play::NowPlaying::sample / track->codecContext->sample_rate);
-                //minutes min(duration_cast<minutes>(sec));
-
-                //wprintw(nwindow, "%d:%d / %d:%d", min, sec, duration_cast<minutes>(track->duration), duration_cast<seconds>(track->duration).count()%60);
-            //}
-
-
-            //wmove(nwindow, 2, 1);
-            //wclrtoeol(nwindow);
-
-            //wattron(nwindow, A_BOLD);
-            //wprintw(nwindow, "Queued: ");
-            //wattroff(nwindow, A_BOLD);
-            //wprintw(nwindow, "%d", play::playbackControl.size()); //FIXME: it prints number of all commands, not only tracks
-
-
-            Window::update();
-            this_thread::sleep_for(chrono::milliseconds(100));
+        wmove(nwindow, nlines-1, ncols-1);
+        if (doShuffle)
+        {
+            wattron(nwindow, A_REVERSE);
+            wprintw(nwindow, "S");
+            wattroff(nwindow, A_REVERSE);
         }
         else
         {
-            this_thread::sleep_for(chrono::milliseconds(500));
+            wprintw(nwindow, "S");
         }
+
+        Window::update();
+
+        this_thread::sleep_for(100ms);
     }
 }
