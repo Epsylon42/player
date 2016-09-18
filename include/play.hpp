@@ -30,6 +30,7 @@ namespace playback
         suspendCurrentPlayback,
         playAfterCurrentList,
         playAfterCurrentTrack,
+        playAfterEverything
     };
 
     using PlaybackOptions = Options<PlaybackOption>;

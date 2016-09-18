@@ -227,7 +227,7 @@ namespace playback
 
             shared_ptr<Track> currentTrack;
             data::OpenedTrack opened;
-            while (!currentList.empty())
+            while (!currentList.empty() || opened.isValid())
             {
                 if (!opened.isValid())
                 {
@@ -246,6 +246,7 @@ namespace playback
                 NowPlaying::track = currentTrack;
                 NowPlaying::playing = true;
                 unique_ptr<Command> command = playTrack(opened);
+                NowPlaying::reset();
                 if (!command)
                 {
                     done.push(currentTrack);
@@ -266,7 +267,6 @@ namespace playback
                             {
                                 done.pop();
                             }
-                            NowPlaying::reset();
                             break;
 
                         case CommandType::stop:
@@ -277,7 +277,6 @@ namespace playback
                             {
                                 done.pop();
                             }
-                            NowPlaying::reset();
 
                             if (!suspended.empty())
                             {
@@ -359,21 +358,25 @@ namespace playback
                                 {
                                     currentList.splice(currentList.begin(), commandPlay->tracks, commandPlay->tracks.begin(), commandPlay->tracks.end());
                                 }
-                                else
+                                else if (commandPlay->options & PlaybackOption::playAfterEverything)
                                 {
                                     queued.push_back(move(commandPlay->tracks));
                                 }
-                                break;
+                                else
+                                {
+                                    log(LT::error, "No playback option");
+                                }
                             }
+                            break;
 
                         default:
-                            log("Playback thread received invalid command");
+                            log(LT::error, "Playback thread received invalid command");
                             break;
                     }
                 }
             }
         }
-end:    NowPlaying::reset();
+end:;
     }
 
     unique_ptr<Command> getPlaybackCommand()

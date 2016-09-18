@@ -742,6 +742,7 @@ void TracksListingWindow::press(int key)
             options.insert(PlaybackOption::stopCurrentPlayback);
             break;
         case 'S':
+            options.insert(PlaybackOption::playAfterEverything);
             break;
         case 'd':
             options.insert(PlaybackOption::playAfterCurrentTrack);
@@ -789,6 +790,7 @@ void AlbumsListingWindow::press(int key)
             options.insert(PlaybackOption::stopCurrentPlayback);
             break;
         case 'S':
+            options.insert(PlaybackOption::playAfterEverything);
             break;
         case 'd':
             options.insert(PlaybackOption::playAfterCurrentTrack);
@@ -838,6 +840,7 @@ void ArtistsListingWindow::press(int key)
             options.insert(PlaybackOption::stopCurrentPlayback);
             break;
         case 'S':
+            options.insert(PlaybackOption::playAfterEverything);
             break;
         case 'd':
             options.insert(PlaybackOption::playAfterCurrentTrack);
