@@ -1,6 +1,7 @@
 #include "interface.hpp"
 #include "play.hpp"
 #include "log.hpp"
+#include "misc.hpp"
 
 #include "ncurses_wrapper.hpp"
 
@@ -18,6 +19,7 @@
 using namespace std;
 using namespace interface;
 using namespace data;
+using namespace misc;
 
 namespace play = playback;
 using namespace playback;
@@ -51,24 +53,8 @@ void initInterface()
     mainWindow = make_shared<ColumnWindow>(0, 0, sizeY, sizeX);
 
     DataLists::artistsList = data::getArtists();
-
-    if (!data::allArtists->allAlbums->tracks.empty())
-    {
-        DataLists::albumsList = data::allArtists->getAlbums();
-    }
-    else
-    {
-        DataLists::albumsList = {};
-    }
-
-    if (!DataLists::tracksList.empty())
-    {
-        DataLists::tracksList = DataLists::albumsList.front()->getTracks();
-    }
-    else
-    {
-        DataLists::tracksList = {};
-    }
+    DataLists::albumsList = data::allArtists->getAlbums();
+    DataLists::tracksList = DataLists::albumsList.front()->getTracks();
 
     auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataLists::tracksList, DataLists::tracksUpdated);
     auto albumsWindow = make_shared<AlbumsListingWindow>(0, 0, 0, 0, DataLists::albumsList, DataLists::albumsUpdated);
@@ -94,6 +80,25 @@ void interfaceLoop()
     initInterface();
     do
     {
+        if (data::isLoading())
+        {
+            static auto prevUpdate = chrono::system_clock().now();
+            auto currentTime = chrono::system_clock().now();
+
+            if (currentTime - prevUpdate > 1s)
+            {
+                //TODO: Only copy new files. They are in lists after all.
+                DataLists::artistsList = data::getArtists();
+                DataLists::albumsList = data::allArtists->getAlbums();
+                DataLists::tracksList = DataLists::albumsList.front()->getTracks();
+                DataLists::artistsUpdated = true;
+                DataLists::albumsUpdated = true;
+                DataLists::tracksUpdated = true;
+                
+                prevUpdate = chrono::system_clock().now();
+            }
+        }
+
         updateWindows();
     } while (readKey());
     endInterface();

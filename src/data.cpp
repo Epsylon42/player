@@ -23,6 +23,8 @@ namespace data
     shared_ptr<Artist> allArtists;
     shared_ptr<Artist> unknownArtist;
 
+    bool loading = false;
+
     void init()
     {
         allArtists    = make_shared<Artist>("all");
@@ -36,6 +38,29 @@ namespace data
 
         allArtists.reset();
         unknownArtist.reset();
+    }
+
+    void loadFiles(const std::vector<std::string>& files)
+    {
+        //FIXME/WARNING: possible data race 
+        loading = true;
+        for (const string& file : files)
+        {
+            try
+            {
+                addTrack(make_shared<Track>(file));
+            }
+            catch (...)
+            {
+                log(LT::error, "Failed to make a track from file %s") % file;
+            }
+        }
+        loading = false;
+    }
+
+    bool isLoading()
+    {
+        return loading;
     }
 
     void addTrack(shared_ptr<Track> track)

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <vector>
 #include <iostream>
 
 #include <ncurses.h>
@@ -33,10 +34,13 @@ int main(int argc, char** argv)
 
     data::init();
 
+    vector<string> files;
+    files.reserve(argc);
     for (int i = 1; i < argc; i++)
     {
-        data::addTrack(make_shared<data::Track>(argv[i]));
+        files.push_back(argv[i]);
     }
+    thread loadFiles(data::loadFiles, ref(files));
 
     playback::init();
 
@@ -44,5 +48,6 @@ int main(int argc, char** argv)
     
     playback::end();
 
+    loadFiles.detach();
     data::end();
 }

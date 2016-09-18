@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <vector>
 #include <thread>
 #include <memory>
 #include <chrono>
@@ -26,6 +27,9 @@ namespace data
 
     void init();
     void end();
+
+    void loadFiles(const std::vector<std::string>& files);
+    bool isLoading();
 
     void addTrack(std::shared_ptr<Track> track);
     std::list<std::shared_ptr<Artist>> getArtists();
