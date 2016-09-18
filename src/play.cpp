@@ -7,6 +7,7 @@
 #include <iterator>
 #include <thread>
 #include <chrono>
+#include <random>
 #include <tuple>
 
 #include <stack>
@@ -115,7 +116,7 @@ namespace playback
             vector<shared_ptr<Track>> temp(make_move_iterator(playbackList.begin()), make_move_iterator(playbackList.end()));
             playbackList.clear();
 
-            random_shuffle(temp.begin(), temp.end());
+            shuffle(temp.begin(), temp.end(), default_random_engine(system_clock::now().time_since_epoch().count()));
 
             playbackList = { make_move_iterator(temp.begin()), make_move_iterator(temp.end()) };
         }
@@ -137,7 +138,7 @@ namespace playback
             vector<shared_ptr<Track>> temp(make_move_iterator(playbackList.begin()), make_move_iterator(playbackList.end()));
             playbackList.clear();
 
-            random_shuffle(temp.begin(), temp.end());
+            shuffle(temp.begin(), temp.end(), default_random_engine(system_clock::now().time_since_epoch().count()));
 
             playbackList = { make_move_iterator(temp.begin()), make_move_iterator(temp.end()) };
         }
