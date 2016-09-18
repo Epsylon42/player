@@ -16,7 +16,6 @@
 #include <limits>
 #include <cstdint>
 
-
 using namespace std;
 using namespace chrono;
 
@@ -55,8 +54,9 @@ namespace playback
 
     unique_ptr<Command> playTrack(data::OpenedTrack& track)
     {
-        track.pipeline->set_state(Gst::STATE_PLAYING);
+        cout << "\033]0;" << track.parent->name << "\007\n";
 
+        track.pipeline->set_state(Gst::STATE_PLAYING);
 
         while (true)
         {
@@ -87,6 +87,7 @@ namespace playback
 
                     default:
                         track.pipeline->set_state(Gst::STATE_PAUSED);
+                        cout << "\033]0;" << "player" << "\007\n";
                         return command;
                 }
             }
@@ -94,6 +95,7 @@ namespace playback
             if (track.pipeline->get_bus()->poll(Gst::MESSAGE_EOS, 0))
             {
                 track.markAsInvalid();
+                cout << "\033]0;" << "player" << "\007\n";
                 return {};
             }
 
