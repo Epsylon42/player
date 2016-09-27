@@ -48,6 +48,8 @@ int main(int argc, char** argv)
     
     playback::end();
 
-    loadFiles.detach();
+    data::stopLoading = true;
+    loadFiles.join();
+
     data::end();
 }

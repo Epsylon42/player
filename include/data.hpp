@@ -10,6 +10,7 @@
 #include <thread>
 #include <memory>
 #include <chrono>
+#include <atomic>
 
 
 namespace data
@@ -24,6 +25,9 @@ namespace data
 
     extern std::shared_ptr<Artist> allArtists;
     extern std::shared_ptr<Artist> unknownArtist;
+
+    extern std::atomic_bool loadingLock;
+    extern std::atomic_bool stopLoading;
 
     void init();
     void end();

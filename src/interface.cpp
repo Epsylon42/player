@@ -53,7 +53,7 @@ void initInterface()
     mainWindow = make_shared<ColumnWindow>(0, 0, sizeY, sizeX);
 
     DataLists::artistsList = data::getArtists();
-    DataLists::albumsList = data::allArtists->getAlbums();
+    DataLists::albumsList = DataLists::artistsList.front()->getAlbums();
     DataLists::tracksList = DataLists::albumsList.front()->getTracks();
 
     auto tracksWindow = make_shared<TracksListingWindow>(0, 0, 0, 0, DataLists::tracksList, DataLists::tracksUpdated);
@@ -88,12 +88,21 @@ void interfaceLoop()
             if (currentTime - prevUpdate > 1s)
             {
                 //TODO: Only copy new files. They are in lists after all.
-                DataLists::artistsList = data::getArtists();
-                DataLists::albumsList = data::allArtists->getAlbums();
-                DataLists::tracksList = DataLists::albumsList.front()->getTracks();
+                data::loadingLock = true;
+
+                //DataLists::artistsList = data::getArtists();
+                //DataLists::albumsList = data::allArtists->getAlbums();
+                //DataLists::tracksList = DataLists::albumsList.front()->getTracks();
+                misc::updateSortedList(DataLists::artistsList, data::getArtists());
+                misc::updateSortedList(DataLists::albumsList, DataLists::artistsList.front()->getAlbums());
+                misc::updateSortedList(DataLists::tracksList, DataLists::albumsList.front()->getTracks());
+
+                data::loadingLock = false;
+
                 DataLists::artistsUpdated = true;
                 DataLists::albumsUpdated = true;
                 DataLists::tracksUpdated = true;
+
                 
                 prevUpdate = chrono::system_clock().now();
             }
@@ -664,6 +673,12 @@ void ListListingWindow<ListType>::updateScreenIters()
         }
         ++screenEnd;
     }
+
+    int dist = distance(screenStart, screenEnd);
+    if (dist < nlines)
+    {
+        screenStart = prev(screenEnd, nlines);
+    }
 }
 
 template< typename ListType >
@@ -672,6 +687,20 @@ ListListingWindow<ListType>::ListListingWindow(int startY, int startX, int nline
 {
     cursorPos   = this->data.begin();
     screenStart = this->data.begin();
+}
+
+template< typename ListType >
+bool ListListingWindow<ListType>::validateIterator(typename list<ListType>::iterator iter) const
+{
+    for (auto cmp = data.begin(); cmp != data.end(); ++cmp)
+    {
+        if (iter == cmp)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
     template< typename ListType >
@@ -687,7 +716,10 @@ void ListListingWindow<ListType>::update()
 
     if (dataUpdated)
     {
-        cursorPos = data.begin();
+        if (!validateIterator(cursorPos))
+        {
+            cursorPos = data.begin();
+        }
         updateScreenIters();
         dataUpdated = false;
     }
@@ -1038,6 +1070,12 @@ void PlaybackControlWindow::playbackWindowThread()
         else
         {
             print({nlines-1, ncols-1}, "S");
+        }
+
+        wmove(nwindow, nlines-1, ncols-2);
+        if (data::isLoading())
+        {
+            wprintw(nwindow, "L");
         }
 
         Window::update();

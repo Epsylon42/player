@@ -23,7 +23,9 @@ namespace data
     shared_ptr<Artist> allArtists;
     shared_ptr<Artist> unknownArtist;
 
-    bool loading = false;
+    atomic_bool loading(false);
+    atomic_bool loadingLock(false);
+    atomic_bool stopLoading(false);
 
     void init()
     {
@@ -46,6 +48,14 @@ namespace data
         loading = true;
         for (const string& file : files)
         {
+            if (stopLoading)
+            {
+                stopLoading = false;
+                break;
+            }
+
+            while (loadingLock);
+
             try
             {
                 addTrack(make_shared<Track>(file));
