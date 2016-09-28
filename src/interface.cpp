@@ -389,18 +389,21 @@ void Window::print(const string& str)
     print(cursor, str);
 }
 
+void Window::clear()
+{
+    for (int i = 0; i < nlines; i++)
+    {
+        wmove(nwindow, i, 0);
+        wclrtoeol(nwindow);
+    }
+}
+
 EmptyWindow::EmptyWindow(int startY, int startX, int nlines, int ncols) :
     Window(startY, startX, nlines, ncols) {}
 
 void EmptyWindow::update() 
 {
-    //mvwprintw(nwindow, 0, 0, "st: %d", nlines);
-    printfmt({0, 0}, "st: %d", nlines);
-    for (int i = 1; i < nlines; i++)
-    {
-        //mvwprintw(nwindow, i, 0, "%d", i);
-        printfmt({i, 0}, "%d", i);
-    }
+    clear();
     Window::update();
 }
 void EmptyWindow::processKey(int ch) 
@@ -966,36 +969,41 @@ void PlaybackControlWindow::playbackWindowThread()
 {
     while(!stopThread)
     {
-        for (int i = 0; i < nlines; i++)
-        {
-            wmove(nwindow, i, 0);
-            wclrtoeol(nwindow);
-        }
+        clear();
+        resetCursor();
 
         if (playbackInProcess() && play::NowPlaying::track)
         {
             if (playbackInProcess())
             {
                 wattron(nwindow, A_BOLD);
-                print({0, 0}, "Track: ");
+                print("Track: ");
                 wattroff(nwindow, A_BOLD);
-
-                //wprintw(nwindow, "%s", play::NowPlaying::track->name.c_str());
                 printfmt("%s", play::NowPlaying::track->name);
+                nextLine();
 
-                wmove(nwindow, 1, 0);
-                wclrtoeol(nwindow);
+                wattron(nwindow, A_BOLD);
+                print("Album: ");
+                wattroff(nwindow, A_BOLD);
+                printfmt("%s", play::NowPlaying::track->albumName);
+                nextLine();
+
+                wattron(nwindow, A_BOLD);
+                print("Artist: ");
+                wattroff(nwindow, A_BOLD);
+                printfmt("%s", play::NowPlaying::track->artistName);
+                nextLine();
 
                 wattron(nwindow, A_BOLD);
                 if (play::playbackPause)
                 {
                     //wprintw(nwindow, "Paused:  ");
-                    print({1, 0}, "Paused:  ");
+                    print("Paused:  ");
                 }
                 else
                 {
                     //wprintw(nwindow, "Playing: ");
-                    print({1, 0}, "Playing: ");
+                    print("Playing: ");
                 }
                 wattroff(nwindow, A_BOLD);
             }
@@ -1010,6 +1018,7 @@ void PlaybackControlWindow::playbackWindowThread()
                 replace(current, current+10, '.', '\0');
                 //wprintw(nwindow, "%s / %s", current, duration);
                 printfmt("%s / %s", current, duration);
+                nextLine();
 
                 delete [] duration;
                 delete [] current;

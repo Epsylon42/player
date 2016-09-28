@@ -109,6 +109,15 @@ class Window : public std::enable_shared_from_this<Window>
             printfmt(cursor, fmtString, std::forward<Args>(args)...);
         }
 
+    void moveUp(int n = 1) { cursor.y -= n; }
+    void moveDown(int n = 1) { cursor.y += n; }
+    void resetCursor() { cursor.x = 0; cursor.y = 0; }
+    void resetX() { cursor.x = 0; }
+    void resetY() { cursor.y = 0; }
+    void nextLine(){ moveDown(); resetX(); }
+
+    void clear();
+
 	virtual void afterReshape() = 0;
 };
 
