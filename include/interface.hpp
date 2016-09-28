@@ -10,7 +10,10 @@
 #include <utility>
 #include <functional>
 
+#include <boost/format.hpp>
+
 #include "data.hpp"
+#include "log.hpp"
 
 class Window;
 class EmptyWindow;
@@ -79,6 +82,32 @@ class Window : public std::enable_shared_from_this<Window>
 
     protected:
     std::weak_ptr<Window> parent;
+
+    struct Coord { int y; int x; };
+    Coord viewport{ 0, 0 };
+    Coord cursor{ 0, 0 };
+
+    void moveViewport(Coord coord);
+    void print(Coord coord, const std::string& str);
+
+    template< typename... Args >
+        void printfmt(Coord coord, const std::string& fmtString, Args&&... args)
+        {
+            boost::format fmt(fmtString);
+
+            std::initializer_list<int>{(fmt % std::forward<Args>(args), 0)...};
+            // it was the only way
+            
+            print(coord, fmt.str());
+        }
+
+    void print(const std::string& str);
+
+    template< typename... Args >
+        void printfmt(const std::string& fmtString, Args&&... args)
+        {
+            printfmt(cursor, fmtString, std::forward<Args>(args)...);
+        }
 
 	virtual void afterReshape() = 0;
 };

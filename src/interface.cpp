@@ -343,26 +343,64 @@ weak_ptr<Window> Window::getParent() const
     return parent;
 }
 
+void Window::moveViewport(Window::Coord coord)
+{
+    viewport.x += coord.x;
+    viewport.y += coord.y;
+}
+
+void Window::print(Window::Coord coord, const string& str)
+{
+    Coord printPos = coord;
+    printPos.x -= viewport.x;
+    printPos.y -= viewport.y;
+
+    if (printPos.y < 0 || printPos.y > nlines-1)
+    {
+        return;
+    }
+
+    auto printBegin = str.begin();
+    auto printEnd = str.end();
+    if (printPos.x < 0)
+    {
+        printBegin -= printPos.x; // same as printBegin += |printPos.x|
+        printPos.x = 0;
+    }
+
+    auto endPosX = printPos.x + distance(printBegin, printEnd);
+    if (endPosX >= ncols)
+    {
+        printEnd -= endPosX - ncols;
+    }
+
+
+    if (distance(printBegin, printEnd) > 0)
+    {
+        wmove(nwindow, printPos.y, printPos.x);
+        wprintw(nwindow, "%s", string(printBegin, printEnd).c_str());
+        cursor.x = coord.x + distance(printBegin, printEnd);
+        cursor.y = coord.y;
+    }
+}
+
+void Window::print(const string& str)
+{
+    print(cursor, str);
+}
+
 EmptyWindow::EmptyWindow(int startY, int startX, int nlines, int ncols) :
     Window(startY, startX, nlines, ncols) {}
 
 void EmptyWindow::update() 
 {
-    /* wmove(window, 0, 0); */
-    /* wclrtoeol(window); */
-    /* wprintw(window, "st: %d", nlines); */
-    mvwprintw(nwindow, 0, 0, "st: %d", nlines);
+    //mvwprintw(nwindow, 0, 0, "st: %d", nlines);
+    printfmt({0, 0}, "st: %d", nlines);
     for (int i = 1; i < nlines; i++)
     {
-        /* wmove(window, i, 0); */
-        /* wclrtoeol(window); */
-        /* wprintw(window, "%d", i); */
-        mvwprintw(nwindow, i, 0, "%d", i);
+        //mvwprintw(nwindow, i, 0, "%d", i);
+        printfmt({i, 0}, "%d", i);
     }
-    /* wmove(window, nlines-1, 0); */
-    /* wclrtoeol(window); */
-    /* wprintw(window, "end"); */
-    /* mvwprintw(window, nlines-1, 0, "end"); */
     Window::update();
 }
 void EmptyWindow::processKey(int ch) 
@@ -651,14 +689,14 @@ void ListListingWindow<ListType>::update()
 
     for (int i = 0; i < nlines; i++)
     {
-        wmove(nwindow, i, 1);
+        wmove(nwindow, i, 0);
         wclrtoeol(nwindow);
     }
 
     int line = 0;
     for (auto iter = screenStart; iter != screenEnd && iter != data.end(); ++iter)
     {
-        wmove(nwindow, line++, 1);
+        wmove(nwindow, line++, 0);
         wclrtoeol(nwindow);
         if (iter == cursorPos)
         {
@@ -930,7 +968,7 @@ void PlaybackControlWindow::playbackWindowThread()
     {
         for (int i = 0; i < nlines; i++)
         {
-            wmove(nwindow, i, 1);
+            wmove(nwindow, i, 0);
             wclrtoeol(nwindow);
         }
 
@@ -938,24 +976,26 @@ void PlaybackControlWindow::playbackWindowThread()
         {
             if (playbackInProcess())
             {
-                wmove(nwindow, 0, 1);
                 wattron(nwindow, A_BOLD);
-                wprintw(nwindow, "Track: ");
+                print({0, 0}, "Track: ");
                 wattroff(nwindow, A_BOLD);
 
-                wprintw(nwindow, "%s", play::NowPlaying::track->name.c_str());
+                //wprintw(nwindow, "%s", play::NowPlaying::track->name.c_str());
+                printfmt("%s", play::NowPlaying::track->name);
 
-                wmove(nwindow, 1, 1);
+                wmove(nwindow, 1, 0);
                 wclrtoeol(nwindow);
 
                 wattron(nwindow, A_BOLD);
                 if (play::playbackPause)
                 {
-                    wprintw(nwindow, "Paused:  ");
+                    //wprintw(nwindow, "Paused:  ");
+                    print({1, 0}, "Paused:  ");
                 }
                 else
                 {
-                    wprintw(nwindow, "Playing: ");
+                    //wprintw(nwindow, "Playing: ");
+                    print({1, 0}, "Playing: ");
                 }
                 wattroff(nwindow, A_BOLD);
             }
@@ -968,7 +1008,8 @@ void PlaybackControlWindow::playbackWindowThread()
                 snprintf(current, 10, "%" GST_TIME_FORMAT, GST_TIME_ARGS(play::NowPlaying::current));
                 replace(duration, duration+10, '.', '\0');
                 replace(current, current+10, '.', '\0');
-                wprintw(nwindow, "%s / %s", current, duration);
+                //wprintw(nwindow, "%s / %s", current, duration);
+                printfmt("%s / %s", current, duration);
 
                 delete [] duration;
                 delete [] current;
@@ -976,16 +1017,15 @@ void PlaybackControlWindow::playbackWindowThread()
 
         }
 
-        wmove(nwindow, nlines-1, ncols-1);
         if (doShuffle)
         {
             wattron(nwindow, A_REVERSE);
-            wprintw(nwindow, "S");
+            print({nlines-1, ncols-1}, "S");
             wattroff(nwindow, A_REVERSE);
         }
         else
         {
-            wprintw(nwindow, "S");
+            print({nlines-1, ncols-1}, "S");
         }
 
         Window::update();
