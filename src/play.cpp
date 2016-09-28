@@ -248,6 +248,7 @@ namespace playback
 
                 NowPlaying::track = currentTrack;
                 NowPlaying::playing = true;
+                playbackPause = false;
                 unique_ptr<Command> command = playTrack(opened);
                 NowPlaying::reset();
                 if (!command)
