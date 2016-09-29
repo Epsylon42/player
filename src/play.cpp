@@ -17,12 +17,17 @@
 #include <limits>
 #include <cstdint>
 
+#include <fstream>
+
 using namespace std;
 using namespace chrono;
 
 using data::Track;
 using data::Album;
 using data::Artist;
+
+ofstream qd("queue");
+                                
 
 namespace playback
 {
@@ -259,6 +264,28 @@ namespace playback
                 {
                     switch (command->type())
                     {
+                        case CommandType::dumpQueue:
+                            {
+                                qd << "currentTrack: " << currentTrack->name << endl;
+
+                                qd << "currentList:" << endl;
+                                for (auto& e : currentList)
+                                {
+                                    qd << '\t' << e->name << endl;
+                                }
+                                    
+                                qd << "queued:" << endl;
+                                for (int i = 0; i < queued.size(); i++)
+                                {
+                                    qd << '\t' << i << ':' << endl;
+                                    for (auto& e : queued[i])
+                                    {
+                                        qd << "\t\t" << e->name << endl;
+                                    }
+                                }
+                                qd << "---------------------" << endl;
+                            }
+                            break;
                         case CommandType::stopAll:
                             opened.markAsInvalid();
                             currentList.clear();

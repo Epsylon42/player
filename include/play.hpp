@@ -84,7 +84,8 @@ namespace playback
         previous,
         next,
         exit,
-        play
+        play,
+        dumpQueue
     };
 
     // SIMPLE COMMANDS
@@ -147,6 +148,12 @@ namespace playback
     {
         public:
             CommandEXIT() : Command(CommandType::exit) {};
+    };
+
+    class CommandDQ : public Command
+    {
+        public:
+            CommandDQ() : Command(CommandType::dumpQueue) {};
     };
 
     // PLAYBACK COMMAND

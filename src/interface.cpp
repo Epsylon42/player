@@ -257,6 +257,9 @@ bool readKey()
         case 't': //(t)oggle shuffle
             doShuffle = !doShuffle;
             break;
+        case '!':
+            sendPlaybackCommand(new CommandDQ());
+            break;
         default:
             {
                 if (auto locked = mainWindow->getSelected().lock())
