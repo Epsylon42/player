@@ -678,10 +678,7 @@ ListListingWindow<ListType>::~ListListingWindow()
     template< typename ListType >
 void ListListingWindow<ListType>::update()
 {
-    if (data.empty())
-    {
-        return;
-    }
+    clear();
 
     if (dataUpdated)
     {
@@ -690,11 +687,12 @@ void ListListingWindow<ListType>::update()
         dataUpdated = false;
     }
 
-    for (int i = 0; i < nlines; i++)
+    if (data.empty())
     {
-        wmove(nwindow, i, 0);
-        wclrtoeol(nwindow);
+        Window::update();
+        return;
     }
+
 
     int line = 0;
     for (auto iter = screenStart; iter != screenEnd && iter != data.end(); ++iter)
