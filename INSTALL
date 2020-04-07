@@ -1,3 +1,0 @@
-1. Install cmake, pkg-config, libncursesw-5 and libgstreamermm-1.0
-2. Use cmake to build the project
-?3. If cmake doesn't work, try to build the project manually. It's not that big yet.
